@@ -35,7 +35,6 @@ export default function App() {
   // Modal States
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formSectionTab, setFormSectionTab] = useState('umum');
 
   // Auth States
   const [authEmail, setAuthEmail] = useState('');
@@ -86,24 +85,14 @@ export default function App() {
     security_category: 'G',
     pkp_pk_category: 'IV',
     city_distance: '',
-    transportation: 'Mobil & Motor',
-    sbu_number: '',
-    terminal_domestic_m2: '0',
-    terminal_intl_m2: '0',
-    terminal_cargo_m2: '0',
-    pagar_kerja_panjang: '0',
-    pagar_kerja_tinggi: '2.4',
-    pagar_kerja_konstruksi: 'Wiremesh',
-    pagar_landasan_panjang: '0',
-    pagar_landasan_tinggi: '2.4',
-    pagar_landasan_konstruksi: 'Wiremesh'
+    transportation: 'Mobil & Motor'
   };
 
   const [formFaskampen, setFormFaskampen] = useState(initialFaskampen);
   const [formPersonnel, setFormPersonnel] = useState(initialPersonnel);
   const [formAirport, setFormAirport] = useState(initialAirportData);
 
-  // Helper untuk Menghitung Status Lisensi Personel Otomatis
+  // Helper Status Lisensi
   const calculateLicenseStatus = (expiryDateStr) => {
     if (!expiryDateStr) return { text: 'TIDAK ADA DATA', color: 'text-slate-400 bg-slate-800' };
 
@@ -125,7 +114,7 @@ export default function App() {
     }
   };
 
-  // 2. FETCH DATA & PROFILE
+  // FETCH DATA & PROFILE
   const fetchUserProfile = async (userId, userEmail) => {
     try {
       const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
@@ -141,22 +130,18 @@ export default function App() {
         });
       }
     } catch (err) {
-      console.error('Error fetching profile:', err.message);
+      console.error(err.message);
     }
   };
 
   const fetchAllData = async () => {
     setLoading(true);
-    
-    // Fetch Facilities
     const { data: facData } = await supabase.from('facilities').select('*').order('id', { ascending: true });
     if (facData) setFacilities(facData);
 
-    // Fetch Personnel
     const { data: perData } = await supabase.from('personnel').select('*').order('id', { ascending: true });
     if (perData) setPersonnel(perData);
 
-    // Fetch Airports
     const { data: aptData } = await supabase.from('airports_info').select('*').order('id', { ascending: true });
     if (aptData) setAirports(aptData);
     
@@ -177,7 +162,7 @@ export default function App() {
     if (session) fetchAllData();
   }, [session]);
 
-  // 3. HANDLERS
+  // HANDLERS
   const handleAuth = async (e) => {
     e.preventDefault();
     setAuthError('');
@@ -189,7 +174,6 @@ export default function App() {
       const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
       if (error) setAuthError(error.message);
       else {
-        alert('Pendaftaran berhasil! Silakan login.');
         setAuthMode('login');
       }
     }
@@ -203,65 +187,46 @@ export default function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    let resError = null;
-
-    // Ambil numeric user_id dari userProfile atau default ke 1 agar tidak error type mismatch (UUID ke Integer)
     const numericUserId = Number(userProfile?.user_id || userProfile?.id || 1) || 1;
 
     if (activeTab === 'faskampen') {
       if (editingId) {
-        const { error } = await supabase.from('facilities').update(formFaskampen).eq('id', editingId);
-        resError = error;
+        await supabase.from('facilities').update(formFaskampen).eq('id', editingId);
       } else {
-        const { error } = await supabase.from('facilities').insert([{ ...formFaskampen, user_id: numericUserId }]);
-        resError = error;
+        await supabase.from('facilities').insert([{ ...formFaskampen, user_id: numericUserId }]);
       }
     } else if (activeTab === 'personel') {
+      // Hilangkan birth_place_date jika kolom belum dibuat di tabel Supabase
+      const { birth_place_date, ...cleanPersonnel } = formPersonnel;
+
       if (editingId) {
-        const { error } = await supabase.from('personnel').update(formPersonnel).eq('id', editingId);
-        resError = error;
+        await supabase.from('personnel').update(cleanPersonnel).eq('id', editingId);
       } else {
-        const { error } = await supabase.from('personnel').insert([{ ...formPersonnel, user_id: numericUserId }]);
-        resError = error;
+        await supabase.from('personnel').insert([{ ...cleanPersonnel, user_id: numericUserId }]);
       }
     } else if (activeTab === 'bandara') {
-      const { 
-        transportation, sbu_number, sbu_expiry, certificate_number, certificate_expiry, 
-        city_distance, district, province, notes, 
-        ...cleanAirportForm 
-      } = formAirport;
+      const { transportation, city_distance, district, province, notes, ...cleanAirportForm } = formAirport;
 
       if (editingId) {
-        const { error } = await supabase.from('airports_info').update(cleanAirportForm).eq('id', editingId);
-        resError = error;
+        await supabase.from('airports_info').update(cleanAirportForm).eq('id', editingId);
       } else {
-        const { error } = await supabase.from('airports_info').insert([{ ...cleanAirportForm, user_id: numericUserId }]);
-        resError = error;
+        await supabase.from('airports_info').insert([{ ...cleanAirportForm, user_id: numericUserId }]);
       }
     }
 
-    if (resError) {
-      console.error('Error simpan data:', resError.message);
-      alert('Gagal menyimpan data: ' + resError.message);
-      return;
-    }
-
-    alert('Data berhasil disimpan!');
     resetForm();
     fetchAllData();
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Yakin ingin menghapus data ini?')) {
-      if (activeTab === 'faskampen') {
-        await supabase.from('facilities').delete().eq('id', id);
-      } else if (activeTab === 'personel') {
-        await supabase.from('personnel').delete().eq('id', id);
-      } else if (activeTab === 'bandara') {
-        await supabase.from('airports_info').delete().eq('id', id);
-      }
-      fetchAllData();
+    if (activeTab === 'faskampen') {
+      await supabase.from('facilities').delete().eq('id', id);
+    } else if (activeTab === 'personel') {
+      await supabase.from('personnel').delete().eq('id', id);
+    } else if (activeTab === 'bandara') {
+      await supabase.from('airports_info').delete().eq('id', id);
     }
+    fetchAllData();
   };
 
   const handleEdit = (item) => {
@@ -275,16 +240,13 @@ export default function App() {
   const resetForm = () => {
     setShowModal(false);
     setEditingId(null);
-    setFormSectionTab('umum');
     setFormFaskampen(initialFaskampen);
     setFormPersonnel(initialPersonnel);
     setFormAirport(initialAirportData);
   };
 
-  // Cek Role Admin
   const isAdmin = userProfile?.role?.toUpperCase() === 'ADMIN' || (session?.user?.email && session.user.email.toLowerCase().includes('admin'));
 
-  // 4. LOGIKA KONTROL AKSES DATA (ROLE BASED FILTERING)
   const filteredFacilities = facilities.filter(item => {
     const matchesSearch = (item.equipment_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.brand_type || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -297,7 +259,6 @@ export default function App() {
   const filteredPersonnel = personnel.filter(item => {
     const matchesSearch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.nip || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (item.birth_place_date || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.airport_name || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesAirport = selectedAirport === 'ALL' || item.airport_name === selectedAirport;
     return matchesSearch && matchesAirport;
@@ -310,7 +271,6 @@ export default function App() {
     return matchesSearch && matchesAirport;
   });
 
-  // Hitung Statistik Berdasarkan Tab Aktif
   const totalEquipments = filteredFacilities.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
   const laikCount = filteredFacilities.filter(i => i.status === 'LAIK').length;
   const tidakLaikCount = filteredFacilities.filter(i => i.status === 'TIDAK LAIK').length;
@@ -405,7 +365,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* NAVIGATION TABS */}
+      {/* TABS */}
       <div className="bg-slate-900/80 border-b border-slate-800 px-6 pt-3 flex gap-2">
         <button
           onClick={() => setActiveTab('faskampen')}
@@ -435,7 +395,7 @@ export default function App() {
         </button>
       </div>
 
-      {/* FILTER & STATS BAR DINAMIS */}
+      {/* STATS */}
       <div className="bg-slate-900/50 border-b border-slate-800 p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
         {activeTab === 'faskampen' && (
           <>
@@ -522,7 +482,7 @@ export default function App() {
         )}
       </div>
 
-      {/* SEARCH AND FILTER */}
+      {/* FILTER */}
       <div className="px-6 pt-4 flex flex-wrap gap-4 justify-between items-center">
         <div className="flex gap-3 flex-1 max-w-lg">
           <div className="relative flex-1">
@@ -549,13 +509,12 @@ export default function App() {
         </div>
       </div>
 
-      {/* MAIN CONTENT AREA */}
+      {/* MAIN CONTENT */}
       <main className="p-6 flex-1">
         {loading ? (
           <div className="text-center py-20 text-slate-500 text-sm">Memuat data dari database...</div>
         ) : (
           <>
-            {/* TAB 1: TABEL FASKAMPEN */}
             {activeTab === 'faskampen' && (
               <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
                 <table className="w-full text-left text-xs">
@@ -611,14 +570,12 @@ export default function App() {
               </div>
             )}
 
-            {/* TAB 2: TABEL PERSONEL */}
             {activeTab === 'personel' && (
               <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-800/60 border-b border-slate-800 text-slate-400 uppercase tracking-wider">
                     <tr>
                       <th className="px-4 py-3">Nama Lengkap / NIP</th>
-                      <th className="px-4 py-3">Tempat, Tgl Lahir</th>
                       <th className="px-4 py-3">Tingkat Lisensi</th>
                       <th className="px-4 py-3">No. Lisensi (SKP)</th>
                       <th className="px-4 py-3">Masa Berlaku</th>
@@ -628,7 +585,7 @@ export default function App() {
                   </thead>
                   <tbody className="divide-y divide-slate-800/50 text-slate-300">
                     {filteredPersonnel.length === 0 ? (
-                      <tr><td colSpan="7" className="text-center py-8 text-slate-500">Tidak ada data personel ditemukan.</td></tr>
+                      <tr><td colSpan="6" className="text-center py-8 text-slate-500">Tidak ada data personel ditemukan.</td></tr>
                     ) : (
                       filteredPersonnel.map((item) => {
                         const statusObj = calculateLicenseStatus(item.expiry_date);
@@ -638,7 +595,6 @@ export default function App() {
                               <div className="font-bold text-white">{item.name}</div>
                               {item.nip && <div className="underline text-slate-400 font-mono text-[11px] mt-0.5">{item.nip}</div>}
                             </td>
-                            <td className="px-4 py-3 text-slate-300">{item.birth_place_date || '-'}</td>
                             <td className="px-4 py-3">
                               <span className="px-2 py-0.5 bg-blue-950 text-blue-400 border border-blue-800 rounded text-[10px] font-bold">
                                 {item.license_level}
@@ -664,12 +620,11 @@ export default function App() {
               </div>
             )}
 
-            {/* TAB 3: DETAIL PROFIL BANDARA */}
             {activeTab === 'bandara' && (
               <div className="space-y-6">
                 {filteredAirports.length === 0 ? (
                   <div className="text-center py-16 bg-slate-900 border border-slate-800 rounded-xl text-slate-500">
-                    Belum ada data detail bandara. Klik <strong className="text-emerald-400">"Input Data Bandara"</strong> untuk menambahkan data baru.
+                    Belum ada data detail bandara.
                   </div>
                 ) : (
                   filteredAirports.map((apt) => (
@@ -695,23 +650,17 @@ export default function App() {
                           <div><span className="text-slate-500">Penyelenggara:</span> <p className="font-medium text-slate-200">{apt.organizer}</p></div>
                           <div><span className="text-slate-500">Kelas Bandara:</span> <p className="font-medium text-slate-200">{apt.class_category}</p></div>
                           <div><span className="text-slate-500">Jam Operasi:</span> <p className="font-medium text-slate-200">{apt.operating_hours}</p></div>
-                          <div><span className="text-slate-500">Alamat:</span> <p className="font-medium text-slate-200">{apt.address || '-'}</p></div>
                         </div>
 
                         <div className="space-y-2">
                           <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Spesifikasi Operasional</p>
                           <div><span className="text-slate-500">Pesawat Terbesar:</span> <p className="font-medium text-slate-200">{apt.largest_aircraft}</p></div>
                           <div><span className="text-slate-500">Dimensi Runway:</span> <p className="font-medium text-slate-200">{apt.runway_dimension}</p></div>
-                          <div><span className="text-slate-500">Kategori Keamanan:</span> <p className="font-medium text-slate-200">{apt.security_category}</p></div>
-                          <div><span className="text-slate-500">Kategori PKP-PK:</span> <p className="font-medium text-slate-200">{apt.pkp_pk_category}</p></div>
                         </div>
 
                         <div className="space-y-2">
                           <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Fasilitas & Layanan</p>
                           <div><span className="text-slate-500">Layanan LLP:</span> <p className="font-medium text-slate-200">{apt.llp_service}</p></div>
-                          <div><span className="text-slate-500">Luas Terminal Domestik:</span> <p className="font-medium text-slate-200">{apt.terminal_domestic_m2} m²</p></div>
-                          <div><span className="text-slate-500">Pagar Kerja:</span> <p className="font-medium text-slate-200">{apt.pagar_kerja_panjang} m ({apt.pagar_kerja_konstruksi})</p></div>
-                          <div><span className="text-slate-500">Pagar Landasan:</span> <p className="font-medium text-slate-200">{apt.pagar_landasan_panjang} m ({apt.pagar_landasan_konstruksi})</p></div>
                         </div>
                       </div>
                     </div>
@@ -723,7 +672,7 @@ export default function App() {
         )}
       </main>
 
-      {/* MODAL INPUT / EDIT DATA */}
+      {/* MODAL INPUT / EDIT */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 p-6 rounded-2xl text-slate-100 shadow-2xl my-8">
@@ -736,7 +685,6 @@ export default function App() {
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* FORM FASKAMPEN */}
               {activeTab === 'faskampen' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                   <div>
@@ -757,7 +705,6 @@ export default function App() {
                       value={formFaskampen.equipment_name} 
                       onChange={(e) => setFormFaskampen({...formFaskampen, equipment_name: e.target.value})}
                       className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                      placeholder="misal: X-Ray Bagasi"
                     />
                   </div>
 
@@ -768,7 +715,6 @@ export default function App() {
                       value={formFaskampen.brand_type} 
                       onChange={(e) => setFormFaskampen({...formFaskampen, brand_type: e.target.value})}
                       className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                      placeholder="misal: Nuctech CX6040BI"
                     />
                   </div>
 
@@ -779,7 +725,6 @@ export default function App() {
                       value={formFaskampen.serial_number} 
                       onChange={(e) => setFormFaskampen({...formFaskampen, serial_number: e.target.value})}
                       className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                      placeholder="SN12345678"
                     />
                   </div>
 
@@ -790,7 +735,6 @@ export default function App() {
                       value={formFaskampen.facility_location} 
                       onChange={(e) => setFormFaskampen({...formFaskampen, facility_location: e.target.value})}
                       className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                      placeholder="misal: SCP 1 Keberangkatan"
                     />
                   </div>
 
@@ -848,7 +792,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* FORM PERSONEL */}
               {activeTab === 'personel' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                   <div>
@@ -883,17 +826,6 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label className="block text-slate-400 mb-1">Tempat, Tgl Lahir</label>
-                    <input 
-                      type="text" 
-                      value={formPersonnel.birth_place_date} 
-                      onChange={(e) => setFormPersonnel({...formPersonnel, birth_place_date: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                      placeholder="Medan, 12 Januari 1995"
-                    />
-                  </div>
-
-                  <div>
                     <label className="block text-slate-400 mb-1">Tingkat Lisensi</label>
                     <select 
                       value={formPersonnel.license_level} 
@@ -916,7 +848,7 @@ export default function App() {
                     />
                   </div>
 
-                  <div className="md:col-span-2">
+                  <div>
                     <label className="block text-slate-400 mb-1">Tanggal Masa Berlaku Lisensi</label>
                     <input 
                       type="date" 
@@ -928,7 +860,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* FORM BANDARA */}
               {activeTab === 'bandara' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                   <div>
@@ -949,7 +880,6 @@ export default function App() {
                       value={formAirport.code_icao_iata} 
                       onChange={(e) => setFormAirport({...formAirport, code_icao_iata: e.target.value})}
                       className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                      placeholder="WIMB / FLT"
                     />
                   </div>
 
@@ -969,46 +899,6 @@ export default function App() {
                       type="text" 
                       value={formAirport.class_category} 
                       onChange={(e) => setFormAirport({...formAirport, class_category: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">Jam Operasi</label>
-                    <input 
-                      type="text" 
-                      value={formAirport.operating_hours} 
-                      onChange={(e) => setFormAirport({...formAirport, operating_hours: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">Dimensi Runway</label>
-                    <input 
-                      type="text" 
-                      value={formAirport.runway_dimension} 
-                      onChange={(e) => setFormAirport({...formAirport, runway_dimension: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">Pesawat Terbesar</label>
-                    <input 
-                      type="text" 
-                      value={formAirport.largest_aircraft} 
-                      onChange={(e) => setFormAirport({...formAirport, largest_aircraft: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">Alamat</label>
-                    <input 
-                      type="text" 
-                      value={formAirport.address} 
-                      onChange={(e) => setFormAirport({...formAirport, address: e.target.value})}
                       className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
                     />
                   </div>
