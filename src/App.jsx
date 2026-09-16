@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient';
 import { 
   Building2, PlusCircle, CheckCircle2, 
   Layers, Search, Filter, ShieldCheck, AlertTriangle, 
-  LogOut, Trash2, Edit, User, X, Users, BadgeCheck
+  LogOut, Trash2, Edit, User, X, Users, BadgeCheck, Clock, AlertCircle
 } from 'lucide-react';
 
 const LIST_BANDARA = [
@@ -49,6 +49,8 @@ export default function App() {
     airport_name: LIST_BANDARA[0],
     equipment_name: '',
     brand_type: '',
+    serial_number: '',
+    facility_location: '',
     installation_year: new Date().getFullYear(),
     condition_percent: 100,
     status: 'LAIK',
@@ -60,10 +62,10 @@ export default function App() {
     airport_name: LIST_BANDARA[0],
     name: '',
     nip: '',
+    birth_place_date: '',
     license_level: 'BASIC AVSEC',
     license_number: '',
-    expiry_date: '',
-    status: 'AKTIF'
+    expiry_date: ''
   };
 
   const initialAirportData = {
@@ -100,6 +102,28 @@ export default function App() {
   const [formFaskampen, setFormFaskampen] = useState(initialFaskampen);
   const [formPersonnel, setFormPersonnel] = useState(initialPersonnel);
   const [formAirport, setFormAirport] = useState(initialAirportData);
+
+  // Helper untuk Menghitung Status Lisensi Personel Otomatis
+  const calculateLicenseStatus = (expiryDateStr) => {
+    if (!expiryDateStr) return { text: 'TIDAK ADA DATA', color: 'text-slate-400 bg-slate-800' };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const expiryDate = new Date(expiryDateStr);
+    expiryDate.setHours(0, 0, 0, 0);
+
+    const diffTime = expiryDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays > 14) {
+      return { text: 'AKTIF', color: 'text-emerald-400 bg-emerald-950/60 border-emerald-800' };
+    } else if (diffDays >= 0 && diffDays <= 14) {
+      return { text: 'Diharapkan Segera Memperpanjang License', color: 'text-amber-400 bg-amber-950/60 border-amber-800' };
+    } else {
+      return { text: 'MATI', color: 'text-rose-400 bg-rose-950/60 border-rose-800' };
+    }
+  };
 
   // 2. FETCH DATA & PROFILE
   const fetchUserProfile = async (userId, userEmail) => {
@@ -177,7 +201,7 @@ export default function App() {
     setUserProfile(null);
   };
 
-const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (activeTab === 'faskampen') {
@@ -193,7 +217,6 @@ const handleSubmit = async (e) => {
         await supabase.from('personnel').insert([{ ...formPersonnel, user_id: session.user.id }]);
       }
     } else if (activeTab === 'bandara') {
-      // Menghapus field ekstra yang menyebabkan error kolom Supabase (seperti transportation, sbu_number, dll)
       const { 
         transportation, sbu_number, sbu_expiry, certificate_number, certificate_expiry, 
         city_distance, district, province, notes, 
@@ -241,17 +264,17 @@ const handleSubmit = async (e) => {
     setFormAirport(initialAirportData);
   };
 
-  // Cek apakah user adalah ADMIN
+  // Cek Role Admin
   const isAdmin = userProfile?.role?.toUpperCase() === 'ADMIN' || (session?.user?.email && session.user.email.toLowerCase().includes('admin'));
 
   // 4. LOGIKA KONTROL AKSES DATA (ROLE BASED FILTERING)
   const filteredFacilities = facilities.filter(item => {
-    // Jika BUKAN ADMIN, hanya tampilkan data milik user ini saja
     if (!isAdmin && item.user_id && item.user_id !== session?.user?.id) {
       return false;
     }
     const matchesSearch = (item.equipment_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.brand_type || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (item.facility_location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.airport_name || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesAirport = selectedAirport === 'ALL' || item.airport_name === selectedAirport;
     return matchesSearch && matchesAirport;
@@ -263,6 +286,7 @@ const handleSubmit = async (e) => {
     }
     const matchesSearch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.nip || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (item.birth_place_date || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.airport_name || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesAirport = selectedAirport === 'ALL' || item.airport_name === selectedAirport;
     return matchesSearch && matchesAirport;
@@ -278,11 +302,15 @@ const handleSubmit = async (e) => {
     return matchesSearch && matchesAirport;
   });
 
-  // Hitung statistik berdasarkan data yang berhak dilihat user
+  // Hitung Statistik Berdasarkan Tab Aktif
   const totalEquipments = filteredFacilities.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
   const laikCount = filteredFacilities.filter(i => i.status === 'LAIK').length;
   const tidakLaikCount = filteredFacilities.filter(i => i.status === 'TIDAK LAIK').length;
+
   const totalPersonel = filteredPersonnel.length;
+  const personelAktif = filteredPersonnel.filter(i => calculateLicenseStatus(i.expiry_date).text === 'AKTIF').length;
+  const personelPerluPerpanjang = filteredPersonnel.filter(i => calculateLicenseStatus(i.expiry_date).text === 'Diharapkan Segera Memperpanjang License').length;
+  const personelMati = filteredPersonnel.filter(i => calculateLicenseStatus(i.expiry_date).text === 'MATI').length;
 
   if (!session) {
     return (
@@ -330,14 +358,13 @@ const handleSubmit = async (e) => {
           <div className="p-2 bg-blue-600 rounded-lg"><Building2 className="w-6 h-6 text-white" /></div>
           <div>
             <h1 className="text-base font-bold tracking-wide text-yellow-400">
-  SISTEM MONITORING PERSONEL & FASILITAS KEAMANAN PENERBANGAN
-</h1>
+              SISTEM MONITORING PERSONEL & FASILITAS KEAMANAN PENERBANGAN
+            </h1>
             <p className="text-xs text-blue-400">OTORITAS BANDAR UDARA WILAYAH II - Live Operational Dashboard</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* USER PROFILE INFO BADGE */}
           <div className="flex items-center gap-2.5 bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-lg text-xs">
             <div className="p-1.5 bg-slate-800 rounded-full text-blue-400">
               <User className="w-3.5 h-3.5" />
@@ -400,39 +427,91 @@ const handleSubmit = async (e) => {
         </button>
       </div>
 
-      {/* FILTER & STATS BAR */}
-      <div className="bg-slate-900/50 border-b border-slate-800 p-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-400 font-medium">Total Peralatan</p>
-            <p className="text-2xl font-bold text-white">{totalEquipments} <span className="text-xs text-slate-500">Unit</span></p>
-          </div>
-          <div className="p-3 bg-blue-500/10 rounded-lg text-blue-400"><Layers className="w-5 h-5" /></div>
-        </div>
+      {/* FILTER & STATS BAR DINAMIS */}
+      <div className="bg-slate-900/50 border-b border-slate-800 p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        {activeTab === 'faskampen' && (
+          <>
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Total Peralatan</p>
+                <p className="text-2xl font-bold text-white">{totalEquipments} <span className="text-xs text-slate-500">Unit</span></p>
+              </div>
+              <div className="p-3 bg-blue-500/10 rounded-lg text-blue-400"><Layers className="w-5 h-5" /></div>
+            </div>
 
-        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-400 font-medium">Kondisi Laik Operasi</p>
-            <p className="text-2xl font-bold text-emerald-400">{laikCount} <span className="text-xs text-slate-500">Peralatan</span></p>
-          </div>
-          <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-400"><CheckCircle2 className="w-5 h-5" /></div>
-        </div>
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Kondisi Laik Operasi</p>
+                <p className="text-2xl font-bold text-emerald-400">{laikCount} <span className="text-xs text-slate-500">Peralatan</span></p>
+              </div>
+              <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-400"><CheckCircle2 className="w-5 h-5" /></div>
+            </div>
 
-        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-400 font-medium">Perlu Perbaikan / Rusak</p>
-            <p className="text-2xl font-bold text-rose-400">{tidakLaikCount} <span className="text-xs text-slate-500">Peralatan</span></p>
-          </div>
-          <div className="p-3 bg-rose-500/10 rounded-lg text-rose-400"><AlertTriangle className="w-5 h-5" /></div>
-        </div>
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Perlu Perbaikan / Rusak</p>
+                <p className="text-2xl font-bold text-rose-400">{tidakLaikCount} <span className="text-xs text-slate-500">Peralatan</span></p>
+              </div>
+              <div className="p-3 bg-rose-500/10 rounded-lg text-rose-400"><AlertTriangle className="w-5 h-5" /></div>
+            </div>
+          </>
+        )}
 
-        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-400 font-medium">Total Personel Avsec</p>
-            <p className="text-2xl font-bold text-cyan-400">{totalPersonel} <span className="text-xs text-slate-500">Orang</span></p>
-          </div>
-          <div className="p-3 bg-cyan-500/10 rounded-lg text-cyan-400"><BadgeCheck className="w-5 h-5" /></div>
-        </div>
+        {activeTab === 'personel' && (
+          <>
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Total Personel Avsec</p>
+                <p className="text-2xl font-bold text-cyan-400">{totalPersonel} <span className="text-xs text-slate-500">Orang</span></p>
+              </div>
+              <div className="p-3 bg-cyan-500/10 rounded-lg text-cyan-400"><BadgeCheck className="w-5 h-5" /></div>
+            </div>
+
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Personel Active</p>
+                <p className="text-2xl font-bold text-emerald-400">{personelAktif} <span className="text-xs text-slate-500">Orang</span></p>
+              </div>
+              <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-400"><CheckCircle2 className="w-5 h-5" /></div>
+            </div>
+
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Perlu Perpanjang / Mati</p>
+                <p className="text-2xl font-bold text-amber-400">{personelPerluPerpanjang + personelMati} <span className="text-xs text-slate-500">Orang</span></p>
+              </div>
+              <div className="p-3 bg-amber-500/10 rounded-lg text-amber-400"><Clock className="w-5 h-5" /></div>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'bandara' && (
+          <>
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Total Bandara Terdaftar</p>
+                <p className="text-2xl font-bold text-purple-400">{filteredAirports.length} <span className="text-xs text-slate-500">Lokasi</span></p>
+              </div>
+              <div className="p-3 bg-purple-500/10 rounded-lg text-purple-400"><Building2 className="w-5 h-5" /></div>
+            </div>
+
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Akses Wilayah</p>
+                <p className="text-xl font-bold text-white">{selectedAirport === 'ALL' ? 'Semua Bandara' : selectedAirport}</p>
+              </div>
+              <div className="p-3 bg-blue-500/10 rounded-lg text-blue-400"><Filter className="w-5 h-5" /></div>
+            </div>
+
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Status Pengawasan</p>
+                <p className="text-2xl font-bold text-emerald-400">AKTIF</p>
+              </div>
+              <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-400"><ShieldCheck className="w-5 h-5" /></div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* SEARCH AND FILTER */}
@@ -442,7 +521,7 @@ const handleSubmit = async (e) => {
             <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
             <input 
               type="text" 
-              placeholder="Cari data / nama bandara..." 
+              placeholder="Cari data..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-blue-500"
@@ -474,10 +553,10 @@ const handleSubmit = async (e) => {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-800/60 border-b border-slate-800 text-slate-400 uppercase tracking-wider">
                     <tr>
-                      <th className="px-4 py-3">Lokasi Bandara</th>
                       <th className="px-4 py-3">Nama Peralatan</th>
-                      <th className="px-4 py-3">Merk / Tipe</th>
-                      <th className="px-4 py-3">Thn Pasang</th>
+                      <th className="px-4 py-3">Merk / Tipe / SN</th>
+                      <th className="px-4 py-3">Lokasi Fasilitas</th>
+                      <th className="px-4 py-3">Tahun Instalasi</th>
                       <th className="px-4 py-3">Jumlah</th>
                       <th className="px-4 py-3">Kondisi (%)</th>
                       <th className="px-4 py-3">Status Operasional</th>
@@ -491,9 +570,12 @@ const handleSubmit = async (e) => {
                     ) : (
                       filteredFacilities.map((item) => (
                         <tr key={item.id} className="hover:bg-slate-800/30 transition">
-                          <td className="px-4 py-3 font-semibold text-slate-200">{item.airport_name}</td>
                           <td className="px-4 py-3 font-bold text-white">{item.equipment_name}</td>
-                          <td className="px-4 py-3 text-slate-400">{item.brand_type}</td>
+                          <td className="px-4 py-3 text-slate-300">
+                            <div>{item.brand_type || '-'}</div>
+                            {item.serial_number && <div className="text-[10px] text-slate-500 font-mono">SN: {item.serial_number}</div>}
+                          </td>
+                          <td className="px-4 py-3 text-slate-300 font-medium">{item.facility_location || '-'}</td>
                           <td className="px-4 py-3">{item.installation_year}</td>
                           <td className="px-4 py-3 font-mono">{item.quantity} Unit</td>
                           <td className="px-4 py-3">
@@ -527,37 +609,47 @@ const handleSubmit = async (e) => {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-800/60 border-b border-slate-800 text-slate-400 uppercase tracking-wider">
                     <tr>
-                      <th className="px-4 py-3">Lokasi Bandara</th>
-                      <th className="px-4 py-3">Nama Lengkap</th>
-                      <th className="px-4 py-3">NIP / ID</th>
+                      <th className="px-4 py-3">Nama Lengkap / NIP</th>
+                      <th className="px-4 py-3">Tempat, Tgl Lahir</th>
                       <th className="px-4 py-3">Tingkat Lisensi</th>
                       <th className="px-4 py-3">No. Lisensi (SKP)</th>
                       <th className="px-4 py-3">Masa Berlaku</th>
-                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3">Status Lisensi</th>
                       <th className="px-4 py-3 text-right">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50 text-slate-300">
                     {filteredPersonnel.length === 0 ? (
-                      <tr><td colSpan="8" className="text-center py-8 text-slate-500">Tidak ada data personel ditemukan.</td></tr>
+                      <tr><td colSpan="7" className="text-center py-8 text-slate-500">Tidak ada data personel ditemukan.</td></tr>
                     ) : (
-                      filteredPersonnel.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-800/30 transition">
-                          <td className="px-4 py-3 font-semibold text-slate-200">{item.airport_name}</td>
-                          <td className="px-4 py-3 font-bold text-white">{item.name}</td>
-                          <td className="px-4 py-3 text-slate-400 font-mono">{item.nip}</td>
-                          <td className="px-4 py-3"><span className="px-2 py-0.5 bg-blue-950 text-blue-400 border border-blue-800 rounded text-[10px] font-bold">{item.license_level}</span></td>
-                          <td className="px-4 py-3 font-mono">{item.license_number}</td>
-                          <td className="px-4 py-3 text-slate-400">{item.expiry_date}</td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.status === 'AKTIF' ? 'text-emerald-400 bg-emerald-950/40' : 'text-rose-400 bg-rose-950/40'}`}>{item.status}</span>
-                          </td>
-                          <td className="px-4 py-3 text-right space-x-1">
-                            <button onClick={() => handleEdit(item)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-blue-400"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDelete(item.id)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </td>
-                        </tr>
-                      ))
+                      filteredPersonnel.map((item) => {
+                        const statusObj = calculateLicenseStatus(item.expiry_date);
+                        return (
+                          <tr key={item.id} className="hover:bg-slate-800/30 transition">
+                            <td className="px-4 py-3">
+                              <div className="font-bold text-white">{item.name}</div>
+                              {item.nip && <div className="underline text-slate-400 font-mono text-[11px] mt-0.5">{item.nip}</div>}
+                            </td>
+                            <td className="px-4 py-3 text-slate-300">{item.birth_place_date || '-'}</td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-0.5 bg-blue-950 text-blue-400 border border-blue-800 rounded text-[10px] font-bold">
+                                {item.license_level}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 font-mono">{item.license_number || '-'}</td>
+                            <td className="px-4 py-3 text-slate-400 font-medium">{item.expiry_date || '-'}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border inline-block ${statusObj.color}`}>
+                                {statusObj.text}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right space-x-1">
+                              <button onClick={() => handleEdit(item)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-blue-400"><Edit className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleDelete(item.id)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -627,217 +719,189 @@ const handleSubmit = async (e) => {
         )}
       </main>
 
-      {/* MODAL INPUT / EDIT DATA */}
+      {/* MODAL FORM INPUT/EDIT DATA */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl my-8 overflow-hidden shadow-2xl text-slate-100">
-            <div className="px-6 py-4 bg-slate-800/50 border-b border-slate-800 flex justify-between items-center">
-              <h3 className="font-bold text-white text-base">
-                {editingId ? 'Edit Data' : 'Tambah Data Baru'} - {activeTab === 'faskampen' ? 'Fasilitas' : activeTab === 'personel' ? 'Personel Avsec' : 'Data Bandara'}
-              </h3>
-              <button onClick={resetForm} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
-            </div>
+          <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 p-6 rounded-2xl text-slate-100 shadow-2xl my-8">
+            <button onClick={resetForm} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <h2 className="text-lg font-bold mb-4">
+              {editingId ? 'Edit Data' : 'Tambah Data Baru'} - {activeTab === 'faskampen' ? 'Fasilitas Keamanan' : activeTab === 'personel' ? 'Personel Avsec' : 'Informasi Bandara'}
+            </h2>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
               {/* FORM FASKAMPEN */}
               {activeTab === 'faskampen' && (
-                <div className="space-y-4 text-xs">
-                  <div>
-                    <label className="block text-slate-400 mb-1">Lokasi Bandara</label>
-                    <select value={formFaskampen.airport_name} onChange={(e) => setFormFaskampen({ ...formFaskampen, airport_name: e.target.value })} className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div className="md:col-span-2">
+                    <label className="block text-slate-400 mb-1">Pilih Bandara Tujuan</label>
+                    <select
+                      value={formFaskampen.airport_name}
+                      onChange={(e) => setFormFaskampen({ ...formFaskampen, airport_name: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white"
+                    >
                       {LIST_BANDARA.map(b => <option key={b} value={b}>{b}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-slate-400 mb-1">Nama Peralatan</label>
-                    <input type="text" required value={formFaskampen.equipment_name} onChange={(e) => setFormFaskampen({ ...formFaskampen, equipment_name: e.target.value })} className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200" placeholder="contoh: X-Ray Bagasi Cabin" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-slate-400 mb-1">Merk / Tipe</label>
-                      <input type="text" value={formFaskampen.brand_type} onChange={(e) => setFormFaskampen({ ...formFaskampen, brand_type: e.target.value })} className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200" placeholder="contoh: Nuctech CX6040BI" />
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 mb-1">Tahun Pemasangan</label>
-                      <input type="number" value={formFaskampen.installation_year} onChange={(e) => setFormFaskampen({ ...formFaskampen, installation_year: e.target.value })} className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-slate-400 mb-1">Jumlah (Unit)</label>
-                      <input type="number" value={formFaskampen.quantity} onChange={(e) => setFormFaskampen({ ...formFaskampen, quantity: e.target.value })} className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200" />
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 mb-1">Kondisi (%)</label>
-                      <input type="number" min="0" max="100" value={formFaskampen.condition_percent} onChange={(e) => setFormFaskampen({ ...formFaskampen, condition_percent: e.target.value })} className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200" />
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 mb-1">Status Operasional</label>
-                      <select value={formFaskampen.status} onChange={(e) => setFormFaskampen({ ...formFaskampen, status: e.target.value })} className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200">
-                        <option value="LAIK">LAIK</option>
-                        <option value="TIDAK LAIK">TIDAK LAIK</option>
-                      </select>
-                    </div>
+                    <input type="text" required value={formFaskampen.equipment_name} onChange={(e) => setFormFaskampen({ ...formFaskampen, equipment_name: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="Contoh: X-Ray Bagasi" />
                   </div>
                   <div>
-                    <label className="block text-slate-400 mb-1">Keterangan Catatan Operasional</label>
-                    <textarea value={formFaskampen.description} onChange={(e) => setFormFaskampen({ ...formFaskampen, description: e.target.value })} className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 h-20" placeholder="Catatan kondisi/kerusakan..."></textarea>
+                    <label className="block text-slate-400 mb-1">Merk / Tipe</label>
+                    <input type="text" value={formFaskampen.brand_type} onChange={(e) => setFormFaskampen({ ...formFaskampen, brand_type: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="Contoh: Nuctech / Smith Heimann" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">Nomor Seri (SN)</label>
+                    <input type="text" value={formFaskampen.serial_number || ''} onChange={(e) => setFormFaskampen({ ...formFaskampen, serial_number: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="Contoh: SN-12345678" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">Lokasi Fasilitas</label>
+                    <input type="text" value={formFaskampen.facility_location || ''} onChange={(e) => setFormFaskampen({ ...formFaskampen, facility_location: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="Contoh: SCP 1 Terminal Keberangkatan" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">Tahun Instalasi</label>
+                    <input type="number" value={formFaskampen.installation_year} onChange={(e) => setFormFaskampen({ ...formFaskampen, installation_year: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">Jumlah Unit</label>
+                    <input type="number" value={formFaskampen.quantity} onChange={(e) => setFormFaskampen({ ...formFaskampen, quantity: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">Kondisi (%)</label>
+                    <input type="number" min="0" max="100" value={formFaskampen.condition_percent} onChange={(e) => setFormFaskampen({ ...formFaskampen, condition_percent: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">Status Operasional</label>
+                    <select value={formFaskampen.status} onChange={(e) => setFormFaskampen({ ...formFaskampen, status: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white">
+                      <option value="LAIK">LAIK</option>
+                      <option value="TIDAK LAIK">TIDAK LAIK</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-slate-400 mb-1">Keterangan / Status Perbaikan</label>
+                    <textarea value={formFaskampen.description} onChange={(e) => setFormFaskampen({ ...formFaskampen, description: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white h-20" />
                   </div>
                 </div>
               )}
 
               {/* FORM PERSONEL */}
               {activeTab === 'personel' && (
-                <div className="space-y-4 text-xs">
-                  <div>
-                    <label className="block text-slate-400 mb-1">Lokasi Bandara</label>
-                    <select value={formPersonnel.airport_name} onChange={(e) => setFormPersonnel({ ...formPersonnel, airport_name: e.target.value })} className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div className="md:col-span-2">
+                    <label className="block text-slate-400 mb-1">Pilih Bandara Tujuan</label>
+                    <select value={formPersonnel.airport_name} onChange={(e) => setFormPersonnel({ ...formPersonnel, airport_name: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white">
                       {LIST_BANDARA.map(b => <option key={b} value={b}>{b}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-slate-400 mb-1">Nama Lengkap Personel</label>
-                    <input type="text" required value={formPersonnel.name} onChange={(e) => setFormPersonnel({ ...formPersonnel, name: e.target.value })} className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200" placeholder="Nama lengkap personel" />
+                    <label className="block text-slate-400 mb-1">Nama Lengkap</label>
+                    <input type="text" required value={formPersonnel.name} onChange={(e) => setFormPersonnel({ ...formPersonnel, name: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="Contoh: Budi Santoso" />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-slate-400 mb-1">NIP / ID Staff</label>
-                      <input type="text" value={formPersonnel.nip} onChange={(e) => setFormPersonnel({ ...formPersonnel, nip: e.target.value })} className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200" placeholder="1990..." />
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 mb-1">Tingkat Lisensi</label>
-                      <select value={formPersonnel.license_level} onChange={(e) => setFormPersonnel({ ...formPersonnel, license_level: e.target.value })} className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200">
-                        <option value="BASIC AVSEC">BASIC AVSEC</option>
-                        <option value="JUNIOR AVSEC">JUNIOR AVSEC</option>
-                        <option value="SENIOR AVSEC">SENIOR AVSEC</option>
-                      </select>
-                    </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">NIP</label>
+                    <input type="text" value={formPersonnel.nip || ''} onChange={(e) => setFormPersonnel({ ...formPersonnel, nip: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="Contoh: 199001012020121001" />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-slate-400 mb-1">Nomor SKP / Lisensi</label>
-                      <input type="text" value={formPersonnel.license_number} onChange={(e) => setFormPersonnel({ ...formPersonnel, license_number: e.target.value })} className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200" placeholder="SKP/AVSEC/..." />
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 mb-1">Tanggal Masa Berlaku</label>
-                      <input type="date" value={formPersonnel.expiry_date} onChange={(e) => setFormPersonnel({ ...formPersonnel, expiry_date: e.target.value })} className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200" />
-                    </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">Tempat, Tgl Lahir</label>
+                    <input type="text" value={formPersonnel.birth_place_date || ''} onChange={(e) => setFormPersonnel({ ...formPersonnel, birth_place_date: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="Contoh: Medan, 15 Agustus 1995" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">Tingkat Lisensi</label>
+                    <select value={formPersonnel.license_level} onChange={(e) => setFormPersonnel({ ...formPersonnel, license_level: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white">
+                      <option value="BASIC AVSEC">BASIC AVSEC</option>
+                      <option value="JUNIOR AVSEC">JUNIOR AVSEC</option>
+                      <option value="SENIOR AVSEC">SENIOR AVSEC</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">No. Lisensi (SKP)</label>
+                    <input type="text" value={formPersonnel.license_number} onChange={(e) => setFormPersonnel({ ...formPersonnel, license_number: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="Contoh: SKP/AVSEC/2023/123" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 mb-1">Masa Berlaku Lisensi</label>
+                    <input type="date" value={formPersonnel.expiry_date} onChange={(e) => setFormPersonnel({ ...formPersonnel, expiry_date: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
                   </div>
                 </div>
               )}
 
-              {/* FORM DETAIL BANDARA */}
+              {/* FORM BANDARA */}
               {activeTab === 'bandara' && (
                 <div className="space-y-4 text-xs">
-                  <div className="flex border-b border-slate-800 pb-2 gap-2">
-                    {['umum', 'teknis', 'terminal', 'pagar'].map((sec) => (
-                      <button
-                        key={sec}
-                        type="button"
-                        onClick={() => setFormSectionTab(sec)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition ${
-                          formSectionTab === sec ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        {sec}
-                      </button>
-                    ))}
+                  <div className="flex gap-2 border-b border-slate-800 pb-2">
+                    <button type="button" onClick={() => setFormSectionTab('umum')} className={`px-3 py-1.5 rounded-lg ${formSectionTab === 'umum' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>Umum & Kontak</button>
+                    <button type="button" onClick={() => setFormSectionTab('teknis')} className={`px-3 py-1.5 rounded-lg ${formSectionTab === 'teknis' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>Teknis & Fasilitas</button>
                   </div>
 
-                  {formSectionTab === 'umum' && (
-                    <div className="space-y-3">
+                  {formSectionTab === 'umum' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-slate-400 mb-1">Nama Bandara</label>
-                        <select value={formAirport.airport_name} onChange={(e) => setFormAirport({ ...formAirport, airport_name: e.target.value })} className="w-full p-2 bg-slate-950 border border-slate-800 rounded text-slate-200">
+                        <label className="block text-slate-400 mb-1">Pilih Bandara Tujuan</label>
+                        <select value={formAirport.airport_name} onChange={(e) => setFormAirport({ ...formAirport, airport_name: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white">
                           {LIST_BANDARA.map(b => <option key={b} value={b}>{b}</option>)}
                         </select>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-slate-400 mb-1">Penyelenggara</label>
-                          <input type="text" value={formAirport.organizer} onChange={(e) => setFormAirport({ ...formAirport, organizer: e.target.value })} className="w-full p-2 bg-slate-950 border border-slate-800 rounded text-slate-200" />
-                        </div>
-                        <div>
-                          <label className="block text-slate-400 mb-1">Kode ICAO / IATA</label>
-                          <input type="text" value={formAirport.code_icao_iata} onChange={(e) => setFormAirport({ ...formAirport, code_icao_iata: e.target.value })} className="w-full p-2 bg-slate-950 border border-slate-800 rounded text-slate-200" placeholder="WAAA / AAA" />
-                        </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1">Penyelenggara</label>
+                        <input type="text" value={formAirport.organizer} onChange={(e) => setFormAirport({ ...formAirport, organizer: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
                       </div>
                       <div>
-                        <label className="block text-slate-400 mb-1">Alamat Lengkap</label>
-                        <input type="text" value={formAirport.address} onChange={(e) => setFormAirport({ ...formAirport, address: e.target.value })} className="w-full p-2 bg-slate-950 border border-slate-800 rounded text-slate-200" />
+                        <label className="block text-slate-400 mb-1">Kode ICAO/IATA</label>
+                        <input type="text" value={formAirport.code_icao_iata} onChange={(e) => setFormAirport({ ...formAirport, code_icao_iata: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="Contoh: WIKK/FLT" />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1">Kelas Bandara</label>
+                        <input type="text" value={formAirport.class_category} onChange={(e) => setFormAirport({ ...formAirport, class_category: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-slate-400 mb-1">Alamat Bandara</label>
+                        <input type="text" value={formAirport.address} onChange={(e) => setFormAirport({ ...formAirport, address: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1">Telepon / Fax</label>
+                        <input type="text" value={formAirport.phone_fax} onChange={(e) => setFormAirport({ ...formAirport, phone_fax: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1">Email</label>
+                        <input type="email" value={formAirport.email} onChange={(e) => setFormAirport({ ...formAirport, email: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
                       </div>
                     </div>
-                  )}
-
-                  {formSectionTab === 'teknis' && (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-slate-400 mb-1">Koordinat ARP</label>
-                          <input type="text" value={formAirport.arp_coordinate} onChange={(e) => setFormAirport({ ...formAirport, arp_coordinate: e.target.value })} className="w-full p-2 bg-slate-950 border border-slate-800 rounded text-slate-200" />
-                        </div>
-                        <div>
-                          <label className="block text-slate-400 mb-1">Dimensi Runway</label>
-                          <input type="text" value={formAirport.runway_dimension} onChange={(e) => setFormAirport({ ...formAirport, runway_dimension: e.target.value })} className="w-full p-2 bg-slate-950 border border-slate-800 rounded text-slate-200" />
-                        </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-slate-400 mb-1">Koordinat ARP</label>
+                        <input type="text" value={formAirport.arp_coordinate} onChange={(e) => setFormAirport({ ...formAirport, arp_coordinate: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-slate-400 mb-1">Pesawat Terbesar</label>
-                          <input type="text" value={formAirport.largest_aircraft} onChange={(e) => setFormAirport({ ...formAirport, largest_aircraft: e.target.value })} className="w-full p-2 bg-slate-950 border border-slate-800 rounded text-slate-200" />
-                        </div>
-                        <div>
-                          <label className="block text-slate-400 mb-1">Jam Operasi</label>
-                          <input type="text" value={formAirport.operating_hours} onChange={(e) => setFormAirport({ ...formAirport, operating_hours: e.target.value })} className="w-full p-2 bg-slate-950 border border-slate-800 rounded text-slate-200" />
-                        </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1">Elevasi</label>
+                        <input type="text" value={formAirport.elevation} onChange={(e) => setFormAirport({ ...formAirport, elevation: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
                       </div>
-                    </div>
-                  )}
-
-                  {formSectionTab === 'terminal' && (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-slate-400 mb-1">Domestik (m²)</label>
-                          <input type="text" value={formAirport.terminal_domestic_m2} onChange={(e) => setFormAirport({ ...formAirport, terminal_domestic_m2: e.target.value })} className="w-full p-2 bg-slate-950 border border-slate-800 rounded text-slate-200" />
-                        </div>
-                        <div>
-                          <label className="block text-slate-400 mb-1">Internasional (m²)</label>
-                          <input type="text" value={formAirport.terminal_intl_m2} onChange={(e) => setFormAirport({ ...formAirport, terminal_intl_m2: e.target.value })} className="w-full p-2 bg-slate-950 border border-slate-800 rounded text-slate-200" />
-                        </div>
-                        <div>
-                          <label className="block text-slate-400 mb-1">Kargo (m²)</label>
-                          <input type="text" value={formAirport.terminal_cargo_m2} onChange={(e) => setFormAirport({ ...formAirport, terminal_cargo_m2: e.target.value })} className="w-full p-2 bg-slate-950 border border-slate-800 rounded text-slate-200" />
-                        </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1">Pesawat Terbesar</label>
+                        <input type="text" value={formAirport.largest_aircraft} onChange={(e) => setFormAirport({ ...formAirport, largest_aircraft: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
                       </div>
-                    </div>
-                  )}
-
-                  {formSectionTab === 'pagar' && (
-                    <div className="space-y-3">
-                      <p className="text-blue-400 font-bold border-b border-slate-800 pb-1">Pagar Daerah Kerja Operasional Bandara</p>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-slate-400 mb-1">Panjang (m)</label>
-                          <input type="text" value={formAirport.pagar_kerja_panjang} onChange={(e) => setFormAirport({ ...formAirport, pagar_kerja_panjang: e.target.value })} className="w-full p-2 bg-slate-950 border border-slate-800 rounded text-slate-200" />
-                        </div>
-                        <div>
-                          <label className="block text-slate-400 mb-1">Tinggi (m)</label>
-                          <input type="text" value={formAirport.pagar_kerja_tinggi} onChange={(e) => setFormAirport({ ...formAirport, pagar_kerja_tinggi: e.target.value })} className="w-full p-2 bg-slate-950 border border-slate-800 rounded text-slate-200" />
-                        </div>
-                        <div>
-                          <label className="block text-slate-400 mb-1">Konstruksi</label>
-                          <input type="text" value={formAirport.pagar_kerja_konstruksi} onChange={(e) => setFormAirport({ ...formAirport, pagar_kerja_konstruksi: e.target.value })} className="w-full p-2 bg-slate-950 border border-slate-800 rounded text-slate-200" />
-                        </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1">Dimensi Runway</label>
+                        <input type="text" value={formAirport.runway_dimension} onChange={(e) => setFormAirport({ ...formAirport, runway_dimension: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1">Kategori Keamanan</label>
+                        <input type="text" value={formAirport.security_category} onChange={(e) => setFormAirport({ ...formAirport, security_category: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 mb-1">Kategori PKP-PK</label>
+                        <input type="text" value={formAirport.pkp_pk_category} onChange={(e) => setFormAirport({ ...formAirport, pkp_pk_category: e.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
                       </div>
                     </div>
                   )}
                 </div>
               )}
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                <button type="button" onClick={resetForm} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold">Batal</button>
-                <button type="submit" className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold">Simpan Data</button>
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
+                <button type="button" onClick={resetForm} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold">Batal</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold">Simpan Data</button>
               </div>
             </form>
           </div>
