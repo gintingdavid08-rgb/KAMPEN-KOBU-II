@@ -141,8 +141,8 @@ export default function LandingPage({ onLoginClick }) {
               target="_blank" 
               rel="noopener noreferrer"
               className="group bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-blue-500/50 p-6 rounded-2xl transition-all shadow-lg flex flex-col justify-between">
-            
-              <div>
+            <div>
+              
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 bg-blue-600/20 border border-blue-500/30 rounded-xl text-blue-400 group-hover:scale-105 transition-transform">
                     <ClipboardList className="w-7 h-7" />
