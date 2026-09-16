@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient';
 import { 
   Building2, PlusCircle, CheckCircle2, 
   Layers, Search, Filter, ShieldCheck, AlertTriangle, 
-  LogOut, Trash2, Edit, User, X, Users, BadgeCheck, Clock, AlertCircle
+  LogOut, Trash2, Edit, User, X, Users, BadgeCheck, Clock
 } from 'lucide-react';
 
 const LIST_BANDARA = [
@@ -196,13 +196,10 @@ export default function App() {
         await supabase.from('facilities').insert([{ ...formFaskampen, user_id: numericUserId }]);
       }
     } else if (activeTab === 'personel') {
-      // Hilangkan birth_place_date jika kolom belum dibuat di tabel Supabase
-      const { birth_place_date, ...cleanPersonnel } = formPersonnel;
-
       if (editingId) {
-        await supabase.from('personnel').update(cleanPersonnel).eq('id', editingId);
+        await supabase.from('personnel').update(formPersonnel).eq('id', editingId);
       } else {
-        await supabase.from('personnel').insert([{ ...cleanPersonnel, user_id: numericUserId }]);
+        await supabase.from('personnel').insert([{ ...formPersonnel, user_id: numericUserId }]);
       }
     } else if (activeTab === 'bandara') {
       const { transportation, city_distance, district, province, notes, ...cleanAirportForm } = formAirport;
@@ -259,6 +256,7 @@ export default function App() {
   const filteredPersonnel = personnel.filter(item => {
     const matchesSearch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.nip || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (item.birth_place_date || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.airport_name || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesAirport = selectedAirport === 'ALL' || item.airport_name === selectedAirport;
     return matchesSearch && matchesAirport;
@@ -576,6 +574,7 @@ export default function App() {
                   <thead className="bg-slate-800/60 border-b border-slate-800 text-slate-400 uppercase tracking-wider">
                     <tr>
                       <th className="px-4 py-3">Nama Lengkap / NIP</th>
+                      <th className="px-4 py-3">Tempat, Tgl Lahir</th>
                       <th className="px-4 py-3">Tingkat Lisensi</th>
                       <th className="px-4 py-3">No. Lisensi (SKP)</th>
                       <th className="px-4 py-3">Masa Berlaku</th>
@@ -585,7 +584,7 @@ export default function App() {
                   </thead>
                   <tbody className="divide-y divide-slate-800/50 text-slate-300">
                     {filteredPersonnel.length === 0 ? (
-                      <tr><td colSpan="6" className="text-center py-8 text-slate-500">Tidak ada data personel ditemukan.</td></tr>
+                      <tr><td colSpan="7" className="text-center py-8 text-slate-500">Tidak ada data personel ditemukan.</td></tr>
                     ) : (
                       filteredPersonnel.map((item) => {
                         const statusObj = calculateLicenseStatus(item.expiry_date);
@@ -594,6 +593,9 @@ export default function App() {
                             <td className="px-4 py-3">
                               <div className="font-bold text-white">{item.name}</div>
                               {item.nip && <div className="underline text-slate-400 font-mono text-[11px] mt-0.5">{item.nip}</div>}
+                            </td>
+                            <td className="px-4 py-3 text-slate-300 font-medium">
+                              {item.birth_place_date || '-'}
                             </td>
                             <td className="px-4 py-3">
                               <span className="px-2 py-0.5 bg-blue-950 text-blue-400 border border-blue-800 rounded text-[10px] font-bold">
@@ -821,6 +823,17 @@ export default function App() {
                       type="text" 
                       value={formPersonnel.nip} 
                       onChange={(e) => setFormPersonnel({...formPersonnel, nip: e.target.value})}
+                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-400 mb-1">Tempat, Tgl Lahir</label>
+                    <input 
+                      type="text" 
+                      placeholder="Contoh: Medan, 12 Januari 1995"
+                      value={formPersonnel.birth_place_date} 
+                      onChange={(e) => setFormPersonnel({...formPersonnel, birth_place_date: e.target.value})}
                       className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
                     />
                   </div>
