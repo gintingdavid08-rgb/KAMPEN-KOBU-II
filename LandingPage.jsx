@@ -137,7 +137,7 @@ export default function LandingPage({ onLoginClick }) {
             
             {/* LAYANAN 1: HASIL PENGAWASAN KAMPEN */}
             <a 
-              href="https://script.google.com/macros/s/AKfycbxYg8dHT7ZkLbRdPF3XM3-gJUJYD8BLfwceN0KxYFLZdukbzNmmHKTobnpvX0oyDvih/exec"
+              href="https://script.google.com/macros/s/AKfycbydrW1TEZ7fhTjTpbyUx2X0cnNHVrnBKYi_sH6BtACwAHqmYBWFdhlf8z2K03JdzGoC/exec"
               target="_blank" 
               rel="noopener noreferrer"
               className="group bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-blue-500/50 p-6 rounded-2xl transition-all shadow-lg flex flex-col justify-between"
