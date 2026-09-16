@@ -140,8 +140,8 @@ export default function LandingPage({ onLoginClick }) {
               href={import.meta.env.VITE_EXTERNAL_PORTAL_URL} target="_blank" rel="noopener noreferrer">
               target="_blank" 
               rel="noopener noreferrer"
-              className="group bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-blue-500/50 p-6 rounded-2xl transition-all shadow-lg flex flex-col justify-between"
-            >
+              className="group bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-blue-500/50 p-6 rounded-2xl transition-all shadow-lg flex flex-col justify-between">
+            
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 bg-blue-600/20 border border-blue-500/30 rounded-xl text-blue-400 group-hover:scale-105 transition-transform">
