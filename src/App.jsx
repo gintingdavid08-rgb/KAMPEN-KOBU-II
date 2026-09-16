@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import LandingPage from './LandingPage';
 import { supabase } from './supabaseClient';
 import { 
   Building2, PlusCircle, CheckCircle2, 
   Layers, Search, Filter, ShieldCheck, AlertTriangle, 
-  LogOut, Trash2, Edit, User, X, Users, BadgeCheck, Clock, AlertCircle
+  LogOut, Trash2, Edit, User, X, Users, BadgeCheck, Clock
 } from 'lucide-react';
+
+// Fallback jika LandingPage tidak diimport atau terpisah
+import LandingPage from './LandingPage';
 
 const LIST_BANDARA = [
   'UPBU F.L. TOBING',
@@ -315,7 +317,14 @@ export default function App() {
   if (!session) {
     return (
       <>
-        <LandingPage onLoginClick={() => setShowLoginModal(true)} />
+        {LandingPage ? <LandingPage onLoginClick={() => setShowLoginModal(true)} /> : (
+          <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+            <button onClick={() => setShowLoginModal(true)} className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold">
+              Masuk / Login Sistem
+            </button>
+          </div>
+        )}
+
         {showLoginModal && (
           <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
             <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 p-6 rounded-2xl text-slate-100 shadow-2xl">
