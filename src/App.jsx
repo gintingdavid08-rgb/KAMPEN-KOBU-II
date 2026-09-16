@@ -49,7 +49,8 @@ export default function App() {
     equipment_name: '',
     brand_type: '',
     serial_number: '',
-    facility_location: '',
+    location: '', // Disesuaikan dengan schema Supabase (location)
+    facility_location: '', 
     installation_year: new Date().getFullYear(),
     condition_percent: 100,
     status: 'LAIK',
@@ -190,10 +191,15 @@ export default function App() {
     const numericUserId = Number(userProfile?.user_id || userProfile?.id || 1) || 1;
 
     if (activeTab === 'faskampen') {
+      const payload = {
+        ...formFaskampen,
+        location: formFaskampen.facility_location || formFaskampen.location || ''
+      };
+      
       if (editingId) {
-        await supabase.from('facilities').update(formFaskampen).eq('id', editingId);
+        await supabase.from('facilities').update(payload).eq('id', editingId);
       } else {
-        await supabase.from('facilities').insert([{ ...formFaskampen, user_id: numericUserId }]);
+        await supabase.from('facilities').insert([{ ...payload, user_id: numericUserId }]);
       }
     } else if (activeTab === 'personel') {
       if (editingId) {
@@ -228,9 +234,16 @@ export default function App() {
 
   const handleEdit = (item) => {
     setEditingId(item.id);
-    if (activeTab === 'faskampen') setFormFaskampen(item);
-    else if (activeTab === 'personel') setFormPersonnel(item);
-    else if (activeTab === 'bandara') setFormAirport(item);
+    if (activeTab === 'faskampen') {
+      setFormFaskampen({
+        ...item,
+        facility_location: item.location || item.facility_location || ''
+      });
+    } else if (activeTab === 'personel') {
+      setFormPersonnel(item);
+    } else if (activeTab === 'bandara') {
+      setFormAirport(item);
+    }
     setShowModal(true);
   };
 
@@ -247,7 +260,7 @@ export default function App() {
   const filteredFacilities = facilities.filter(item => {
     const matchesSearch = (item.equipment_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.brand_type || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (item.facility_location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (item.location || item.facility_location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.airport_name || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesAirport = selectedAirport === 'ALL' || item.airport_name === selectedAirport;
     return matchesSearch && matchesAirport;
@@ -540,7 +553,7 @@ export default function App() {
                             <div>{item.brand_type || '-'}</div>
                             {item.serial_number && <div className="text-[10px] text-slate-500 font-mono">SN: {item.serial_number}</div>}
                           </td>
-                          <td className="px-4 py-3 text-slate-300 font-medium">{item.facility_location || '-'}</td>
+                          <td className="px-4 py-3 text-slate-300 font-medium">{item.location || item.facility_location || '-'}</td>
                           <td className="px-4 py-3">{item.installation_year}</td>
                           <td className="px-4 py-3 font-mono">{item.quantity} Unit</td>
                           <td className="px-4 py-3">
