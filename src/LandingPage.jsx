@@ -72,7 +72,7 @@ export default function LandingPage({ onLoginClick }) {
 
       <main className="max-w-6xl mx-auto">
         
-        {/* 2. HERO SLIDER BANNER (KEREN & BERGERAK) */}
+        {/* 2. HERO SLIDER BANNER */}
         <div className="relative w-full h-[380px] md:h-[540px] overflow-hidden rounded-2xl shadow-2xl my-6 border border-slate-800">
           <div 
             className="w-full h-full bg-cover bg-center transition-all duration-700 ease-in-out"
@@ -137,14 +137,12 @@ export default function LandingPage({ onLoginClick }) {
             
             {/* LAYANAN 1: HASIL PENGAWASAN KAMPEN */}
             <a 
-              <a 
-  href={import.meta.env.VITE_EXTERNAL_PORTAL_URL} 
-  target="_blank" 
-  rel="noopener noreferrer"
-  className="group bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-blue-500/50 p-6 rounded-2xl transition-all shadow-lg flex flex-col justify-between"
->
-  <div>
-              
+              href={import.meta.env.VITE_EXTERNAL_PORTAL_URL || 'https://s.id/HASILPENGAWASANKAMPEN'} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="group bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-blue-500/50 p-6 rounded-2xl transition-all shadow-lg flex flex-col justify-between"
+            >
+              <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 bg-blue-600/20 border border-blue-500/30 rounded-xl text-blue-400 group-hover:scale-105 transition-transform">
                     <ClipboardList className="w-7 h-7" />
