@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient';
 import { 
   Building2, PlusCircle, CheckCircle2, 
   Layers, Search, Filter, ShieldCheck, AlertTriangle, 
-  LogOut, Trash2, Edit, User, X, Users, BadgeCheck, Clock
+  LogOut, Trash2, Edit, User, X, Users, BadgeCheck, Clock, MapPin, Phone, Mail, Plane
 } from 'lucide-react';
 
 const LIST_BANDARA = [
@@ -55,7 +55,7 @@ export default function App() {
     condition_percent: 100,
     status: 'LAIK',
     quantity: 1,
-    description: 'OPERASI NORMAL/BAIK'
+    description: ''
   };
 
   const initialPersonnel = {
@@ -174,9 +174,7 @@ export default function App() {
     } else {
       const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
       if (error) setAuthError(error.message);
-      else {
-        setAuthMode('login');
-      }
+      else setAuthMode('login');
     }
   };
 
@@ -186,12 +184,12 @@ export default function App() {
     setUserProfile(null);
   };
 
-  // Helper fungsi untuk mengubah string kosong ("") menjadi null
+  // Helper fungsi pembersih data string kosong ("") menjadi NULL
   const cleanFormData = (obj) => {
     return Object.fromEntries(
       Object.entries(obj).map(([key, value]) => [
         key,
-        value === '' ? null : value
+        (value === '' || value === undefined) ? null : value
       ])
     );
   };
@@ -200,33 +198,49 @@ export default function App() {
     e.preventDefault();
 
     if (activeTab === 'faskampen') {
+      const locValue = formFaskampen.facility_location || formFaskampen.location || '';
       const rawPayload = {
-        ...formFaskampen,
-        location: formFaskampen.facility_location || formFaskampen.location || ''
+        airport_name: formFaskampen.airport_name,
+        equipment_name: formFaskampen.equipment_name,
+        brand_type: formFaskampen.brand_type,
+        serial_number: formFaskampen.serial_number,
+        location: locValue,
+        facility_location: locValue,
+        installation_year: formFaskampen.installation_year ? Number(formFaskampen.installation_year) : null,
+        condition_percent: formFaskampen.condition_percent ? Number(formFaskampen.condition_percent) : 100,
+        status: formFaskampen.status,
+        quantity: formFaskampen.quantity ? Number(formFaskampen.quantity) : 1,
+        description: formFaskampen.description
       };
+
       const payload = cleanFormData(rawPayload);
-      
+
       if (editingId) {
-        await supabase.from('facilities').update(payload).eq('id', editingId);
+        const { error } = await supabase.from('facilities').update(payload).eq('id', editingId);
+        if (error) alert("Gagal update fasilitas: " + error.message);
       } else {
-        await supabase.from('facilities').insert([payload]);
+        const { error } = await supabase.from('facilities').insert([payload]);
+        if (error) alert("Gagal simpan fasilitas: " + error.message);
       }
     } else if (activeTab === 'personel') {
       const payloadPersonnel = cleanFormData(formPersonnel);
 
       if (editingId) {
-        await supabase.from('personnel').update(payloadPersonnel).eq('id', editingId);
+        const { error } = await supabase.from('personnel').update(payloadPersonnel).eq('id', editingId);
+        if (error) alert("Gagal update personel: " + error.message);
       } else {
-        await supabase.from('personnel').insert([payloadPersonnel]);
+        const { error } = await supabase.from('personnel').insert([payloadPersonnel]);
+        if (error) alert("Gagal simpan personel: " + error.message);
       }
     } else if (activeTab === 'bandara') {
-      const { transportation, city_distance, district, province, notes, ...cleanAirportForm } = formAirport;
-      const payloadAirport = cleanFormData(cleanAirportForm);
+      const payloadAirport = cleanFormData(formAirport);
 
       if (editingId) {
-        await supabase.from('airports_info').update(payloadAirport).eq('id', editingId);
+        const { error } = await supabase.from('airports_info').update(payloadAirport).eq('id', editingId);
+        if (error) alert("Gagal update bandara: " + error.message);
       } else {
-        await supabase.from('airports_info').insert([payloadAirport]);
+        const { error } = await supabase.from('airports_info').insert([payloadAirport]);
+        if (error) alert("Gagal simpan bandara: " + error.message);
       }
     }
 
@@ -249,13 +263,14 @@ export default function App() {
     setEditingId(item.id);
     if (activeTab === 'faskampen') {
       setFormFaskampen({
+        ...initialFaskampen,
         ...item,
         facility_location: item.location || item.facility_location || ''
       });
     } else if (activeTab === 'personel') {
-      setFormPersonnel(item);
+      setFormPersonnel({ ...initialPersonnel, ...item });
     } else if (activeTab === 'bandara') {
-      setFormAirport(item);
+      setFormAirport({ ...initialAirportData, ...item });
     }
     setShowModal(true);
   };
@@ -566,12 +581,12 @@ export default function App() {
                             <div>{item.brand_type || '-'}</div>
                             {item.serial_number && <div className="text-[10px] text-slate-500 font-mono">SN: {item.serial_number}</div>}
                           </td>
-                          <td className="px-4 py-3 text-slate-300 font-medium">{item.location || item.facility_location || '-'}</td>
-                          <td className="px-4 py-3">{item.installation_year}</td>
-                          <td className="px-4 py-3 font-mono">{item.quantity} Unit</td>
+                          <td className="px-4 py-3 text-slate-300 font-medium">{item.facility_location || item.location || '-'}</td>
+                          <td className="px-4 py-3">{item.installation_year || '-'}</td>
+                          <td className="px-4 py-3 font-mono">{item.quantity || 1} Unit</td>
                           <td className="px-4 py-3">
                             <span className={`font-mono font-bold ${item.condition_percent >= 80 ? 'text-emerald-400' : item.condition_percent >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>
-                              {item.condition_percent}%
+                              {item.condition_percent ?? 100}%
                             </span>
                           </td>
                           <td className="px-4 py-3">
@@ -581,7 +596,7 @@ export default function App() {
                               {item.status}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-slate-400 max-w-xs truncate">{item.description}</td>
+                          <td className="px-4 py-3 text-slate-400 max-w-xs truncate">{item.description || '-'}</td>
                           <td className="px-4 py-3 text-right space-x-1">
                             <button onClick={() => handleEdit(item)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-blue-400"><Edit className="w-3.5 h-3.5" /></button>
                             <button onClick={() => handleDelete(item.id)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -671,6 +686,41 @@ export default function App() {
                           </button>
                         </div>
                       </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                          <p className="text-slate-500 text-[10px] uppercase font-bold">Penyelenggara</p>
+                          <p className="text-slate-200 font-medium mt-1">{apt.organizer || '-'}</p>
+                        </div>
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                          <p className="text-slate-500 text-[10px] uppercase font-bold">Kategori Kelas / LLP</p>
+                          <p className="text-slate-200 font-medium mt-1">Kelas {apt.class_category || '-'} / {apt.llp_service || '-'}</p>
+                        </div>
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                          <p className="text-slate-500 text-[10px] uppercase font-bold">Jam Operasional</p>
+                          <p className="text-slate-200 font-medium mt-1">{apt.operating_hours || '-'}</p>
+                        </div>
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                          <p className="text-slate-500 text-[10px] uppercase font-bold">Kategori Keamanan / PKP-PK</p>
+                          <p className="text-slate-200 font-medium mt-1">Kat {apt.security_category || '-'} / PKP-PK {apt.pkp_pk_category || '-'}</p>
+                        </div>
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                          <p className="text-slate-500 text-[10px] uppercase font-bold">Koordinat ARP & Elevasi</p>
+                          <p className="text-slate-200 font-medium mt-1">{apt.arp_coordinate || '-'} ({apt.elevation || '-'})</p>
+                        </div>
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                          <p className="text-slate-500 text-[10px] uppercase font-bold">Pesawat Terbesar</p>
+                          <p className="text-slate-200 font-medium mt-1">{apt.largest_aircraft || '-'}</p>
+                        </div>
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                          <p className="text-slate-500 text-[10px] uppercase font-bold">Dimensi Runway</p>
+                          <p className="text-slate-200 font-medium mt-1">{apt.runway_dimension || '-'}</p>
+                        </div>
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                          <p className="text-slate-500 text-[10px] uppercase font-bold">Kontak / Email</p>
+                          <p className="text-slate-200 font-medium mt-1">{apt.phone_fax || '-'} | {apt.email || '-'}</p>
+                        </div>
+                      </div>
                     </div>
                   ))
                 )}
@@ -683,12 +733,12 @@ export default function App() {
       {/* MODAL INPUT / EDIT DATA */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 p-6 rounded-2xl text-slate-100 shadow-2xl my-8">
+          <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 p-6 rounded-2xl text-slate-100 shadow-2xl my-8 max-h-[90vh] overflow-y-auto">
             <button onClick={resetForm} className="absolute top-4 right-4 text-slate-400 hover:text-white">
               <X className="w-5 h-5" />
             </button>
             <h2 className="text-lg font-bold mb-4 border-b border-slate-800 pb-2">
-              {editingId ? 'Edit Data' : 'Tambah Data'} {activeTab === 'faskampen' ? 'Fasilitas' : activeTab === 'personel' ? 'Personel' : 'Bandara'}
+              {editingId ? 'Edit Data' : 'Tambah Data'} {activeTab === 'faskampen' ? 'Fasilitas Keamanan' : activeTab === 'personel' ? 'Personel Avsec' : 'Lengkap Bandara'}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
@@ -706,22 +756,22 @@ export default function App() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-slate-400 mb-1">Nama Peralatan</label>
-                    <input type="text" required value={formFaskampen.equipment_name} onChange={(e) => setFormFaskampen({...formFaskampen, equipment_name: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="X-Ray Bagasi, WTMD, dll." />
+                    <label className="block text-slate-400 mb-1">Nama Peralatan *</label>
+                    <input type="text" required value={formFaskampen.equipment_name} onChange={(e) => setFormFaskampen({...formFaskampen, equipment_name: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="X-Ray Bagasi, WTMD, HHMD, dll." />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-slate-400 mb-1">Merk / Tipe</label>
-                      <input type="text" value={formFaskampen.brand_type} onChange={(e) => setFormFaskampen({...formFaskampen, brand_type: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                      <input type="text" value={formFaskampen.brand_type} onChange={(e) => setFormFaskampen({...formFaskampen, brand_type: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="Rapiscan / Astrophysics" />
                     </div>
                     <div>
                       <label className="block text-slate-400 mb-1">Serial Number</label>
-                      <input type="text" value={formFaskampen.serial_number} onChange={(e) => setFormFaskampen({...formFaskampen, serial_number: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                      <input type="text" value={formFaskampen.serial_number} onChange={(e) => setFormFaskampen({...formFaskampen, serial_number: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="SN123456" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-slate-400 mb-1">Lokasi Fasilitas</label>
-                    <input type="text" value={formFaskampen.facility_location} onChange={(e) => setFormFaskampen({...formFaskampen, facility_location: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="SCP 1, Area Check-in, dll." />
+                    <input type="text" value={formFaskampen.facility_location} onChange={(e) => setFormFaskampen({...formFaskampen, facility_location: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="SCP 1, Area Check-in, Gedung Kargo, dll." />
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     <div>
@@ -746,7 +796,7 @@ export default function App() {
                   </div>
                   <div>
                     <label className="block text-slate-400 mb-1">Keterangan</label>
-                    <textarea value={formFaskampen.description} onChange={(e) => setFormFaskampen({...formFaskampen, description: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white h-20" />
+                    <textarea value={formFaskampen.description} onChange={(e) => setFormFaskampen({...formFaskampen, description: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white h-20" placeholder="Operasi normal / butuh perawatan..." />
                   </div>
                 </>
               )}
@@ -765,7 +815,7 @@ export default function App() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-slate-400 mb-1">Nama Lengkap</label>
+                    <label className="block text-slate-400 mb-1">Nama Lengkap *</label>
                     <input type="text" required value={formPersonnel.name} onChange={(e) => setFormPersonnel({...formPersonnel, name: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -799,35 +849,96 @@ export default function App() {
                 </>
               )}
 
-              {/* FORM BANDARA */}
+              {/* FORM BANDARA LENGKAP */}
               {activeTab === 'bandara' && (
                 <>
-                  <div>
-                    <label className="block text-slate-400 mb-1">Nama Bandara</label>
-                    <input type="text" required value={formAirport.airport_name} onChange={(e) => setFormAirport({...formAirport, airport_name: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
-                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-slate-400 mb-1">Kode ICAO/IATA</label>
+                      <label className="block text-slate-400 mb-1">Nama Bandara *</label>
+                      <input type="text" required value={formAirport.airport_name} onChange={(e) => setFormAirport({...formAirport, airport_name: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Kode ICAO / IATA</label>
                       <input type="text" value={formAirport.code_icao_iata} onChange={(e) => setFormAirport({...formAirport, code_icao_iata: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="WIMM / KNO" />
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
                     <div>
                       <label className="block text-slate-400 mb-1">Penyelenggara</label>
                       <input type="text" value={formAirport.organizer} onChange={(e) => setFormAirport({...formAirport, organizer: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
                     </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Kelas Bandara</label>
+                      <input type="text" value={formAirport.class_category} onChange={(e) => setFormAirport({...formAirport, class_category: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="I / II / III" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Layanan LLP</label>
+                      <input type="text" value={formAirport.llp_service} onChange={(e) => setFormAirport({...formAirport, llp_service: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="AFIS / TWR" />
+                    </div>
                   </div>
+
                   <div>
-                    <label className="block text-slate-400 mb-1">Alamat</label>
+                    <label className="block text-slate-400 mb-1">Alamat Lengkap</label>
                     <input type="text" value={formAirport.address} onChange={(e) => setFormAirport({...formAirport, address: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+
+                  <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-slate-400 mb-1">Email</label>
-                      <input type="email" value={formAirport.email} onChange={(e) => setFormAirport({...formAirport, email: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                      <label className="block text-slate-400 mb-1">Kode Pos</label>
+                      <input type="text" value={formAirport.postal_code} onChange={(e) => setFormAirport({...formAirport, postal_code: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
                     </div>
                     <div>
                       <label className="block text-slate-400 mb-1">Telepon / Fax</label>
                       <input type="text" value={formAirport.phone_fax} onChange={(e) => setFormAirport({...formAirport, phone_fax: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Email</label>
+                      <input type="email" value={formAirport.email} onChange={(e) => setFormAirport({...formAirport, email: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-400 mb-1">Jam Operasional</label>
+                      <input type="text" value={formAirport.operating_hours} onChange={(e) => setFormAirport({...formAirport, operating_hours: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="07.00 s/d 17.00 WIB" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Koordinat ARP & Elevasi</label>
+                      <input type="text" value={formAirport.arp_coordinate} onChange={(e) => setFormAirport({...formAirport, arp_coordinate: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="01 40 18 N / 098 53 23 E" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-400 mb-1">Pesawat Terbesar</label>
+                      <input type="text" value={formAirport.largest_aircraft} onChange={(e) => setFormAirport({...formAirport, largest_aircraft: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="ATR-72 / B737" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Dimensi Runway</label>
+                      <input type="text" value={formAirport.runway_dimension} onChange={(e) => setFormAirport({...formAirport, runway_dimension: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="1200 m x 30 m" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-400 mb-1">Kategori Keamanan</label>
+                      <input type="text" value={formAirport.security_category} onChange={(e) => setFormAirport({...formAirport, security_category: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="G / F / E" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Kategori PKP-PK</label>
+                      <input type="text" value={formAirport.pkp_pk_category} onChange={(e) => setFormAirport({...formAirport, pkp_pk_category: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="IV / V / VI" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-400 mb-1">Jarak ke Kota</label>
+                      <input type="text" value={formAirport.city_distance} onChange={(e) => setFormAirport({...formAirport, city_distance: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="15 Km" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Akses Transportasi</label>
+                      <input type="text" value={formAirport.transportation} onChange={(e) => setFormAirport({...formAirport, transportation: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="Mobil & Motor / Taksi" />
                     </div>
                   </div>
                 </>
