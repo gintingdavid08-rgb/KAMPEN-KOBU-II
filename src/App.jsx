@@ -49,7 +49,6 @@ export default function App() {
     equipment_name: '',
     brand_type: '',
     serial_number: '',
-    location: '', 
     facility_location: '', 
     installation_year: new Date().getFullYear(),
     condition_percent: 100,
@@ -198,14 +197,12 @@ export default function App() {
     e.preventDefault();
 
     if (activeTab === 'faskampen') {
-      const locValue = formFaskampen.facility_location || formFaskampen.location || '';
       const rawPayload = {
         airport_name: formFaskampen.airport_name,
         equipment_name: formFaskampen.equipment_name,
         brand_type: formFaskampen.brand_type,
         serial_number: formFaskampen.serial_number,
-        location: locValue,
-        facility_location: locValue,
+        facility_location: formFaskampen.facility_location || formFaskampen.location || '',
         installation_year: formFaskampen.installation_year ? Number(formFaskampen.installation_year) : null,
         condition_percent: formFaskampen.condition_percent ? Number(formFaskampen.condition_percent) : 100,
         status: formFaskampen.status,
@@ -265,7 +262,7 @@ export default function App() {
       setFormFaskampen({
         ...initialFaskampen,
         ...item,
-        facility_location: item.location || item.facility_location || ''
+        facility_location: item.facility_location || item.location || ''
       });
     } else if (activeTab === 'personel') {
       setFormPersonnel({ ...initialPersonnel, ...item });
@@ -288,7 +285,7 @@ export default function App() {
   const filteredFacilities = facilities.filter(item => {
     const matchesSearch = (item.equipment_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.brand_type || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (item.location || item.facility_location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (item.facility_location || item.location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.airport_name || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesAirport = selectedAirport === 'ALL' || item.airport_name === selectedAirport;
     return matchesSearch && matchesAirport;
