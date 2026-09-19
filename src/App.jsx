@@ -18,11 +18,9 @@ const LIST_BANDARA = [
 ];
 
 export default function App() {
-  // 1. STATE MANAGEMENT
   const [session, setSession] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   
-  // Data States
   const [facilities, setFacilities] = useState([]);
   const [personnel, setPersonnel] = useState([]);
   const [airports, setAirports] = useState([]);
@@ -30,20 +28,17 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAirport, setSelectedAirport] = useState('ALL');
-  const [activeTab, setActiveTab] = useState('faskampen'); // 'faskampen' | 'personel' | 'bandara'
+  const [activeTab, setActiveTab] = useState('faskampen');
 
-  // Modal States
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  // Auth States
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authMode, setAuthMode] = useState('login');
   const [authError, setAuthError] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // Initial Form Data
   const initialFaskampen = {
     airport_name: LIST_BANDARA[0],
     equipment_name: '',
@@ -92,7 +87,6 @@ export default function App() {
   const [formPersonnel, setFormPersonnel] = useState(initialPersonnel);
   const [formAirport, setFormAirport] = useState(initialAirportData);
 
-  // Helper Status Lisensi
   const calculateLicenseStatus = (expiryDateStr) => {
     if (!expiryDateStr) return { text: 'TIDAK ADA DATA', color: 'text-slate-400 bg-slate-800' };
 
@@ -114,7 +108,6 @@ export default function App() {
     }
   };
 
-  // FETCH DATA & PROFILE
   const fetchUserProfile = async (userId, userEmail) => {
     try {
       const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
@@ -162,7 +155,6 @@ export default function App() {
     if (session) fetchAllData();
   }, [session]);
 
-  // HANDLERS
   const handleAuth = async (e) => {
     e.preventDefault();
     setAuthError('');
@@ -183,13 +175,10 @@ export default function App() {
     setUserProfile(null);
   };
 
-  // Helper fungsi pembersih data string kosong ("") menjadi NULL
   const cleanFormData = (obj) => {
     return Object.fromEntries(
-      Object.entries(obj).map(([key, value]) => [
-        key,
-        (value === '' || value === undefined) ? null : value
-      ])
+      Object.entries(obj)
+        .filter(([_, value]) => value !== undefined && value !== null && value !== '')
     );
   };
 
@@ -202,7 +191,7 @@ export default function App() {
         equipment_name: formFaskampen.equipment_name,
         brand_type: formFaskampen.brand_type,
         serial_number: formFaskampen.serial_number,
-        facility_location: formFaskampen.facility_location || formFaskampen.location || '',
+        facility_location: formFaskampen.facility_location || formFaskampen.location,
         installation_year: formFaskampen.installation_year ? Number(formFaskampen.installation_year) : null,
         condition_percent: formFaskampen.condition_percent ? Number(formFaskampen.condition_percent) : 100,
         status: formFaskampen.status,
@@ -356,7 +345,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col">
-      {/* HEADER */}
       <header className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-wrap justify-between items-center gap-4 sticky top-0 z-10 shadow-lg">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-blue-600 rounded-lg"><Building2 className="w-6 h-6 text-white" /></div>
@@ -401,7 +389,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* TABS */}
       <div className="bg-slate-900/80 border-b border-slate-800 px-6 pt-3 flex gap-2">
         <button
           onClick={() => setActiveTab('faskampen')}
@@ -431,7 +418,6 @@ export default function App() {
         </button>
       </div>
 
-      {/* STATS */}
       <div className="bg-slate-900/50 border-b border-slate-800 p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
         {activeTab === 'faskampen' && (
           <>
@@ -518,7 +504,6 @@ export default function App() {
         )}
       </div>
 
-      {/* FILTER */}
       <div className="px-6 pt-4 flex flex-wrap gap-4 justify-between items-center">
         <div className="flex gap-3 flex-1 max-w-lg">
           <div className="relative flex-1">
@@ -545,7 +530,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* MAIN CONTENT */}
       <main className="p-6 flex-1">
         {loading ? (
           <div className="text-center py-20 text-slate-500 text-sm">Memuat data dari database...</div>
@@ -727,7 +711,6 @@ export default function App() {
         )}
       </main>
 
-      {/* MODAL INPUT / EDIT DATA */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 p-6 rounded-2xl text-slate-100 shadow-2xl my-8 max-h-[90vh] overflow-y-auto">
@@ -739,7 +722,6 @@ export default function App() {
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-              {/* FORM FASKAMPEN */}
               {activeTab === 'faskampen' && (
                 <>
                   <div>
@@ -798,7 +780,6 @@ export default function App() {
                 </>
               )}
 
-              {/* FORM PERSONEL */}
               {activeTab === 'personel' && (
                 <>
                   <div>
@@ -846,7 +827,6 @@ export default function App() {
                 </>
               )}
 
-              {/* FORM BANDARA LENGKAP */}
               {activeTab === 'bandara' && (
                 <>
                   <div className="grid grid-cols-2 gap-3">
