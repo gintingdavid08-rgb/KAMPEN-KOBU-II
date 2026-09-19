@@ -49,7 +49,7 @@ export default function App() {
     equipment_name: '',
     brand_type: '',
     serial_number: '',
-    location: '', // Disesuaikan dengan schema Supabase (location)
+    location: '', 
     facility_location: '', 
     installation_year: new Date().getFullYear(),
     condition_percent: 100,
@@ -186,39 +186,47 @@ export default function App() {
     setUserProfile(null);
   };
 
+  // Helper fungsi untuk mengubah string kosong ("") menjadi null
+  const cleanFormData = (obj) => {
+    return Object.fromEntries(
+      Object.entries(obj).map(([key, value]) => [
+        key,
+        value === '' ? null : value
+      ])
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const numericUserId = Number(userProfile?.user_id || userProfile?.id || 1) || 1;
 
     if (activeTab === 'faskampen') {
-      const payload = {
+      const rawPayload = {
         ...formFaskampen,
         location: formFaskampen.facility_location || formFaskampen.location || ''
       };
+      const payload = cleanFormData(rawPayload);
       
       if (editingId) {
         await supabase.from('facilities').update(payload).eq('id', editingId);
       } else {
-        await supabase.from('facilities').insert([{ ...payload, user_id: numericUserId }]);
+        await supabase.from('facilities').insert([payload]);
       }
     } else if (activeTab === 'personel') {
-  const payloadPersonnel = {
-    ...formPersonnel,
-    expiry_date: formPersonnel.expiry_date || null
-  };
-
-  if (editingId) {
-    await supabase.from('personnel').update(payloadPersonnel).eq('id', editingId);
-  } else {
-    await supabase.from('personnel').insert([{ ...payloadPersonnel, user_id: numericUserId }]);
-  }
-    } else if (activeTab === 'bandara') {
-      const { transportation, city_distance, district, province, notes, ...cleanAirportForm } = formAirport;
+      const payloadPersonnel = cleanFormData(formPersonnel);
 
       if (editingId) {
-        await supabase.from('airports_info').update(cleanAirportForm).eq('id', editingId);
+        await supabase.from('personnel').update(payloadPersonnel).eq('id', editingId);
       } else {
-        await supabase.from('airports_info').insert([{ ...cleanAirportForm, user_id: numericUserId }]);
+        await supabase.from('personnel').insert([payloadPersonnel]);
+      }
+    } else if (activeTab === 'bandara') {
+      const { transportation, city_distance, district, province, notes, ...cleanAirportForm } = formAirport;
+      const payloadAirport = cleanFormData(cleanAirportForm);
+
+      if (editingId) {
+        await supabase.from('airports_info').update(payloadAirport).eq('id', editingId);
+      } else {
+        await supabase.from('airports_info').insert([payloadAirport]);
       }
     }
 
@@ -658,29 +666,9 @@ export default function App() {
                           <button onClick={() => handleEdit(apt)} className="p-2 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg text-xs font-semibold flex items-center gap-1">
                             <Edit className="w-3.5 h-3.5" /> Edit
                           </button>
-                          <button onClick={() => handleDelete(apt.id)} className="p-2 bg-slate-800 hover:bg-rose-950 text-rose-400 rounded-lg text-xs font-semibold flex items-center gap-1">
+                          <button onClick={() => handleDelete(apt.id)} className="p-2 bg-slate-800 hover:bg-rose-900/40 text-rose-400 rounded-lg text-xs font-semibold flex items-center gap-1">
                             <Trash2 className="w-3.5 h-3.5" /> Hapus
                           </button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
-                        <div className="space-y-2">
-                          <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Informasi Umum</p>
-                          <div><span className="text-slate-500">Penyelenggara:</span> <p className="font-medium text-slate-200">{apt.organizer}</p></div>
-                          <div><span className="text-slate-500">Kelas Bandara:</span> <p className="font-medium text-slate-200">{apt.class_category}</p></div>
-                          <div><span className="text-slate-500">Jam Operasi:</span> <p className="font-medium text-slate-200">{apt.operating_hours}</p></div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Spesifikasi Operasional</p>
-                          <div><span className="text-slate-500">Pesawat Terbesar:</span> <p className="font-medium text-slate-200">{apt.largest_aircraft}</p></div>
-                          <div><span className="text-slate-500">Dimensi Runway:</span> <p className="font-medium text-slate-200">{apt.runway_dimension}</p></div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Fasilitas & Layanan</p>
-                          <div><span className="text-slate-500">Layanan LLP:</span> <p className="font-medium text-slate-200">{apt.llp_service}</p></div>
                         </div>
                       </div>
                     </div>
@@ -692,265 +680,162 @@ export default function App() {
         )}
       </main>
 
-      {/* MODAL INPUT / EDIT */}
+      {/* MODAL INPUT / EDIT DATA */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 p-6 rounded-2xl text-slate-100 shadow-2xl my-8">
+          <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 p-6 rounded-2xl text-slate-100 shadow-2xl my-8">
             <button onClick={resetForm} className="absolute top-4 right-4 text-slate-400 hover:text-white">
               <X className="w-5 h-5" />
             </button>
-
-            <h2 className="text-lg font-bold mb-4">
-              {editingId ? 'Edit Data' : 'Input Data'} {activeTab === 'faskampen' ? 'Fasilitas' : activeTab === 'personel' ? 'Personel Avsec' : 'Bandara'}
+            <h2 className="text-lg font-bold mb-4 border-b border-slate-800 pb-2">
+              {editingId ? 'Edit Data' : 'Tambah Data'} {activeTab === 'faskampen' ? 'Fasilitas' : activeTab === 'personel' ? 'Personel' : 'Bandara'}
             </h2>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+              {/* FORM FASKAMPEN */}
               {activeTab === 'faskampen' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <>
                   <div>
                     <label className="block text-slate-400 mb-1">Nama Bandara</label>
                     <select 
                       value={formFaskampen.airport_name} 
                       onChange={(e) => setFormFaskampen({...formFaskampen, airport_name: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white"
                     >
                       {LIST_BANDARA.map(b => <option key={b} value={b}>{b}</option>)}
                     </select>
                   </div>
-
                   <div>
                     <label className="block text-slate-400 mb-1">Nama Peralatan</label>
-                    <input 
-                      type="text" required
-                      value={formFaskampen.equipment_name} 
-                      onChange={(e) => setFormFaskampen({...formFaskampen, equipment_name: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
+                    <input type="text" required value={formFaskampen.equipment_name} onChange={(e) => setFormFaskampen({...formFaskampen, equipment_name: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="X-Ray Bagasi, WTMD, dll." />
                   </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">Merk / Tipe</label>
-                    <input 
-                      type="text" 
-                      value={formFaskampen.brand_type} 
-                      onChange={(e) => setFormFaskampen({...formFaskampen, brand_type: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-400 mb-1">Merk / Tipe</label>
+                      <input type="text" value={formFaskampen.brand_type} onChange={(e) => setFormFaskampen({...formFaskampen, brand_type: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Serial Number</label>
+                      <input type="text" value={formFaskampen.serial_number} onChange={(e) => setFormFaskampen({...formFaskampen, serial_number: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                    </div>
                   </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">Nomor Seri (SN)</label>
-                    <input 
-                      type="text" 
-                      value={formFaskampen.serial_number} 
-                      onChange={(e) => setFormFaskampen({...formFaskampen, serial_number: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
-                  </div>
-
                   <div>
                     <label className="block text-slate-400 mb-1">Lokasi Fasilitas</label>
-                    <input 
-                      type="text" 
-                      value={formFaskampen.facility_location} 
-                      onChange={(e) => setFormFaskampen({...formFaskampen, facility_location: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
+                    <input type="text" value={formFaskampen.facility_location} onChange={(e) => setFormFaskampen({...formFaskampen, facility_location: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="SCP 1, Area Check-in, dll." />
                   </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">Tahun Instalasi</label>
-                    <input 
-                      type="number" 
-                      value={formFaskampen.installation_year} 
-                      onChange={(e) => setFormFaskampen({...formFaskampen, installation_year: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-slate-400 mb-1">Tahun Instalasi</label>
+                      <input type="number" value={formFaskampen.installation_year} onChange={(e) => setFormFaskampen({...formFaskampen, installation_year: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Jumlah (Unit)</label>
+                      <input type="number" value={formFaskampen.quantity} onChange={(e) => setFormFaskampen({...formFaskampen, quantity: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Kondisi (%)</label>
+                      <input type="number" min="0" max="100" value={formFaskampen.condition_percent} onChange={(e) => setFormFaskampen({...formFaskampen, condition_percent: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                    </div>
                   </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">Jumlah (Unit)</label>
-                    <input 
-                      type="number" min="1"
-                      value={formFaskampen.quantity} 
-                      onChange={(e) => setFormFaskampen({...formFaskampen, quantity: Number(e.target.value)})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">Kondisi (%)</label>
-                    <input 
-                      type="number" min="0" max="100"
-                      value={formFaskampen.condition_percent} 
-                      onChange={(e) => setFormFaskampen({...formFaskampen, condition_percent: Number(e.target.value)})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
-                  </div>
-
                   <div>
                     <label className="block text-slate-400 mb-1">Status Operasional</label>
-                    <select 
-                      value={formFaskampen.status} 
-                      onChange={(e) => setFormFaskampen({...formFaskampen, status: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    >
+                    <select value={formFaskampen.status} onChange={(e) => setFormFaskampen({...formFaskampen, status: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white">
                       <option value="LAIK">LAIK</option>
                       <option value="TIDAK LAIK">TIDAK LAIK</option>
                     </select>
                   </div>
-
                   <div>
                     <label className="block text-slate-400 mb-1">Keterangan</label>
-                    <input 
-                      type="text" 
-                      value={formFaskampen.description} 
-                      onChange={(e) => setFormFaskampen({...formFaskampen, description: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
+                    <textarea value={formFaskampen.description} onChange={(e) => setFormFaskampen({...formFaskampen, description: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white h-20" />
                   </div>
-                </div>
+                </>
               )}
 
+              {/* FORM PERSONEL */}
               {activeTab === 'personel' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <>
                   <div>
                     <label className="block text-slate-400 mb-1">Nama Bandara</label>
                     <select 
                       value={formPersonnel.airport_name} 
                       onChange={(e) => setFormPersonnel({...formPersonnel, airport_name: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
+                      className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white"
                     >
                       {LIST_BANDARA.map(b => <option key={b} value={b}>{b}</option>)}
                     </select>
                   </div>
-
                   <div>
                     <label className="block text-slate-400 mb-1">Nama Lengkap</label>
-                    <input 
-                      type="text" required
-                      value={formPersonnel.name} 
-                      onChange={(e) => setFormPersonnel({...formPersonnel, name: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
+                    <input type="text" required value={formPersonnel.name} onChange={(e) => setFormPersonnel({...formPersonnel, name: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
                   </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">NIP / NIK</label>
-                    <input 
-                      type="text" 
-                      value={formPersonnel.nip} 
-                      onChange={(e) => setFormPersonnel({...formPersonnel, nip: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-400 mb-1">NIP / NIK</label>
+                      <input type="text" value={formPersonnel.nip} onChange={(e) => setFormPersonnel({...formPersonnel, nip: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Tempat, Tgl Lahir</label>
+                      <input type="text" value={formPersonnel.birth_place_date} onChange={(e) => setFormPersonnel({...formPersonnel, birth_place_date: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="Medan, 01-01-1990" />
+                    </div>
                   </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">Tempat, Tgl Lahir</label>
-                    <input 
-                      type="text" 
-                      placeholder="Contoh: Medan, 12 Januari 1995"
-                      value={formPersonnel.birth_place_date} 
-                      onChange={(e) => setFormPersonnel({...formPersonnel, birth_place_date: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
-                  </div>
-
                   <div>
                     <label className="block text-slate-400 mb-1">Tingkat Lisensi</label>
-                    <select 
-                      value={formPersonnel.license_level} 
-                      onChange={(e) => setFormPersonnel({...formPersonnel, license_level: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    >
+                    <select value={formPersonnel.license_level} onChange={(e) => setFormPersonnel({...formPersonnel, license_level: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white">
                       <option value="BASIC AVSEC">BASIC AVSEC</option>
                       <option value="JUNIOR AVSEC">JUNIOR AVSEC</option>
                       <option value="SENIOR AVSEC">SENIOR AVSEC</option>
                     </select>
                   </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">Nomor Lisensi (SKP)</label>
-                    <input 
-                      type="text" 
-                      value={formPersonnel.license_number} 
-                      onChange={(e) => setFormPersonnel({...formPersonnel, license_number: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-400 mb-1">No. Lisensi (SKP)</label>
+                      <input type="text" value={formPersonnel.license_number} onChange={(e) => setFormPersonnel({...formPersonnel, license_number: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Masa Berlaku (Expiry Date)</label>
+                      <input type="date" value={formPersonnel.expiry_date} onChange={(e) => setFormPersonnel({...formPersonnel, expiry_date: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                    </div>
                   </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">Tanggal Masa Berlaku Lisensi</label>
-                    <input 
-                      type="date" 
-                      value={formPersonnel.expiry_date} 
-                      onChange={(e) => setFormPersonnel({...formPersonnel, expiry_date: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
-                  </div>
-                </div>
+                </>
               )}
 
+              {/* FORM BANDARA */}
               {activeTab === 'bandara' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <>
                   <div>
                     <label className="block text-slate-400 mb-1">Nama Bandara</label>
-                    <select 
-                      value={formAirport.airport_name} 
-                      onChange={(e) => setFormAirport({...formAirport, airport_name: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    >
-                      {LIST_BANDARA.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
+                    <input type="text" required value={formAirport.airport_name} onChange={(e) => setFormAirport({...formAirport, airport_name: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
                   </div>
-
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-400 mb-1">Kode ICAO/IATA</label>
+                      <input type="text" value={formAirport.code_icao_iata} onChange={(e) => setFormAirport({...formAirport, code_icao_iata: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" placeholder="WIMM / KNO" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Penyelenggara</label>
+                      <input type="text" value={formAirport.organizer} onChange={(e) => setFormAirport({...formAirport, organizer: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                    </div>
+                  </div>
                   <div>
-                    <label className="block text-slate-400 mb-1">Kode ICAO / IATA</label>
-                    <input 
-                      type="text" 
-                      value={formAirport.code_icao_iata} 
-                      onChange={(e) => setFormAirport({...formAirport, code_icao_iata: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
+                    <label className="block text-slate-400 mb-1">Alamat</label>
+                    <input type="text" value={formAirport.address} onChange={(e) => setFormAirport({...formAirport, address: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
                   </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">Penyelenggara</label>
-                    <input 
-                      type="text" 
-                      value={formAirport.organizer} 
-                      onChange={(e) => setFormAirport({...formAirport, organizer: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-400 mb-1">Email</label>
+                      <input type="email" value={formAirport.email} onChange={(e) => setFormAirport({...formAirport, email: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 mb-1">Telepon / Fax</label>
+                      <input type="text" value={formAirport.phone_fax} onChange={(e) => setFormAirport({...formAirport, phone_fax: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                    </div>
                   </div>
-
-                  <div>
-                    <label className="block text-slate-400 mb-1">Kelas Bandara</label>
-                    <input 
-                      type="text" 
-                      value={formAirport.class_category} 
-                      onChange={(e) => setFormAirport({...formAirport, class_category: e.target.value})}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white"
-                    />
-                  </div>
-                </div>
+                </>
               )}
 
-              <div className="pt-4 flex justify-end gap-2 border-t border-slate-800">
-                <button 
-                  type="button" 
-                  onClick={resetForm}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold"
-                >
-                  Batal
-                </button>
-                <button 
-                  type="submit" 
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold"
-                >
-                  {editingId ? 'Simpan Perubahan' : 'Simpan Data'}
-                </button>
-              </div>
+              <button type="submit" className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 font-semibold rounded-lg text-xs text-white transition shadow-md mt-4">
+                Simpan Data
+              </button>
             </form>
           </div>
         </div>
