@@ -202,11 +202,16 @@ export default function App() {
         await supabase.from('facilities').insert([{ ...payload, user_id: numericUserId }]);
       }
     } else if (activeTab === 'personel') {
-      if (editingId) {
-        await supabase.from('personnel').update(formPersonnel).eq('id', editingId);
-      } else {
-        await supabase.from('personnel').insert([{ ...formPersonnel, user_id: numericUserId }]);
-      }
+  const payloadPersonnel = {
+    ...formPersonnel,
+    expiry_date: formPersonnel.expiry_date || null
+  };
+
+  if (editingId) {
+    await supabase.from('personnel').update(payloadPersonnel).eq('id', editingId);
+  } else {
+    await supabase.from('personnel').insert([{ ...payloadPersonnel, user_id: numericUserId }]);
+  }
     } else if (activeTab === 'bandara') {
       const { transportation, city_distance, district, province, notes, ...cleanAirportForm } = formAirport;
 
