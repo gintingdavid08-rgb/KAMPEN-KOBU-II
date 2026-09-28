@@ -1,198 +1,163 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  ShieldCheck, 
-  ChevronLeft, 
-  ChevronRight, 
-  ClipboardList, 
-  ShieldAlert, 
-  ExternalLink, 
-  ArrowRight 
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { Shield, ChevronLeft, ChevronRight, Lock, UserCheck, ArrowRight } from 'lucide-react';
 
-export default function LandingPage({ onLoginClick }) {
-  // --- LOGIKA SLIDER BANNER ---
-  const [currentIndex, setCurrentIndex] = useState(0);
+export default function LandingPage({ onLoginSuccess }) {
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [identityInput, setIdentityInput] = useState('');
+  const [roleInput, setRoleInput] = useState('operator');
+  const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Gambar banner diambil dari folder public kamu
-  const bannerImages = [
+  const slides = [
     {
-      url: '/hero1.jpeg',
-      title: 'Pengawasan Keamanan Penerbangan Terintegrasi',
-      subtitle: 'Selamat datang di Sistem Monitoring Personil & Fasilitas Keamanan Penerbangan (FASKAMPEN) Kantor Otoritas Bandar Udara Wilayah II.'
+      url: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=1200&q=80",
+      title: "Pelindungan Maksimal & Pelayanan Optimal",
+      subtitle: "Mewujudkan operasional penerbangan yang aman, nyaman, dan patuh pada regulasi"
     },
     {
-      url: '/hero2.jpeg',
-      title: 'Pelindungan Maksimal & Pelayanan Optimal',
-      subtitle: 'Mewujudkan operasional penerbangan yang aman, nyaman, dan patuh pada regulasi keselamatan.'
-    },
-    {
-      url: '/hero3.jpeg',
-      title: 'Reformasi Birokrasi & Pengawasan Berkelanjutan',
-      subtitle: 'Layanan terpadu dan efisien untuk operasional wilayah udara Medan dan sekitarnya.'
+      url: "https://images.unsplash.com/photo-1519074069444-1ba4e32050e8?auto=format&fit=crop&w=1200&q=80",
+      title: "Pengawasan Fasilitas KAMPEN Terintegrasi",
+      subtitle: "Monitoring real-time kesiapan fasilitas keamanan penerbangan di wilayah kerja"
     }
   ];
 
-  // Auto slide berganti gambar setiap 5 detik
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % bannerImages.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [bannerImages.length]);
+  const handleLoginSubmit = (e) => {
+    e.preventDefault();
+    if (!identityInput.trim()) {
+      alert('Silakan masukkan NIP atau Email terlebih dahulu.');
+      return;
+    }
+
+    // Mengirim data user ke App.jsx
+    onLoginSuccess({
+      id: identityInput.trim().toLowerCase(),
+      name: identityInput.trim(),
+      role: roleInput
+    });
+  };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 px-4 md:px-8 pb-12">
-      
-      {/* 1. NAVBAR HEADER */}
-      <nav className="flex items-center justify-between py-4 border-b border-slate-800 max-w-6xl mx-auto">
-        <div className="flex items-center gap-3">
-          <img 
-            src="/logo-otban.png" 
-            alt="Logo Otban II" 
-            className="h-17 w-auto object-contain" 
-            onError={(e) => { e.target.style.display = 'none'; }} 
-          />
-          <div>
-            <h1 className="font-bold text-sm md:text-base text-white tracking-wide">
-              OTORITAS BANDAR UDARA WILAYAH II
-            </h1>
-            <p className="text-xs text-slate-400">
-              Sistem Monitoring Personil & Fasilitas Keamanan Penerbangan
-            </p>
-          </div>
-        </div>
-
-        <button 
-          onClick={onLoginClick}
-          className="bg-blue-600 hover:bg-blue-500 text-white text-xs md:text-sm px-4 py-2 rounded-xl font-medium transition shadow-lg shadow-blue-600/20"
-        >
-          Login Pegawai
-        </button>
-      </nav>
-
-      <main className="max-w-6xl mx-auto">
-        
-        {/* 2. HERO SLIDER BANNER */}
-        <div className="relative w-full h-[380px] md:h-[540px] overflow-hidden rounded-2xl shadow-2xl my-6 border border-slate-800">
-          <div 
-            className="w-full h-full bg-cover bg-center transition-all duration-700 ease-in-out"
-            style={{ backgroundImage: `url(${bannerImages[currentIndex].url})` }}
-          >
-            <div className="w-full h-full bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent flex flex-col justify-end p-6 md:p-10">
-              <span className="inline-block px-3 py-1 bg-blue-600/80 text-blue-100 text-xs font-semibold rounded-full w-fit mb-3 backdrop-blur-sm">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      {/* Navbar */}
+      <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-blue-600/10 rounded-xl border border-blue-500/20 text-blue-500">
+              <Shield className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="font-black text-sm tracking-wide uppercase text-white">
                 OTORITAS BANDAR UDARA WILAYAH II
-              </span>
-              <h2 className="text-2xl md:text-4xl font-extrabold text-white max-w-2xl leading-tight mb-2">
-                {bannerImages[currentIndex].title}
-              </h2>
-              <p className="text-slate-300 text-xs md:text-sm max-w-xl mb-4">
-                {bannerImages[currentIndex].subtitle}
+              </h1>
+              <p className="text-xs text-slate-400">
+                Sistem Monitoring Personil & Fasilitas Keamanan Penerbangan
               </p>
             </div>
           </div>
 
-          {/* Tombol Panah Kiri & Kanan */}
-          <button 
-            type="button"
-            onClick={() => setCurrentIndex((prev) => (prev === 0 ? bannerImages.length - 1 : prev - 1))}
-            className="absolute top-1/2 left-3 -translate-y-1/2 bg-slate-900/60 hover:bg-slate-900/90 text-white p-2 rounded-full backdrop-blur-sm transition"
+          <button
+            onClick={() => setShowLoginModal(true)}
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-blue-600/20 flex items-center gap-2"
           >
-            <ChevronLeft className="w-5 h-5" />
+            Login Pegawai
           </button>
-          <button 
-            type="button"
-            onClick={() => setCurrentIndex((prev) => (prev + 1) % bannerImages.length)}
-            className="absolute top-1/2 right-3 -translate-y-1/2 bg-slate-900/60 hover:bg-slate-900/90 text-white p-2 rounded-full backdrop-blur-sm transition"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-
-          {/* Titik Indikator Slider */}
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
-            {bannerImages.map((_, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => setCurrentIndex(idx)}
-                className={`h-2 rounded-full transition-all ${
-                  currentIndex === idx ? 'w-6 bg-blue-500' : 'w-2 bg-white/50'
-                }`}
-              />
-            ))}
-          </div>
         </div>
+      </header>
 
-        {/* 3. PILIHAN 2 LAYANAN UTAMA */}
-        <div className="pt-4">
-          <div className="text-center mb-6">
-            <h3 className="text-xl md:text-2xl font-bold text-white mb-1">
-              Pilihan Layanan Operasional
-            </h3>
-            <p className="text-slate-400 text-xs md:text-sm">
-              Silakan pilih portal layanan yang ingin Anda akses
+      {/* Main Content / Slider */}
+      <main className="max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
+        <div className="relative h-[480px] rounded-3xl overflow-hidden border border-slate-800 shadow-2xl group">
+          <img
+            src={slides[currentSlide].url}
+            alt="Hero"
+            className="w-full h-full object-cover transition-all duration-700 filter brightness-50"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+
+          <div className="absolute bottom-12 left-12 right-12 space-y-3">
+            <span className="px-3 py-1 bg-blue-600 text-white text-[10px] font-bold tracking-widest uppercase rounded-full">
+              OTORITAS BANDAR UDARA WILAYAH II
+            </span>
+            <h2 className="text-3xl font-extrabold text-white max-w-2xl leading-tight">
+              {slides[currentSlide].title}
+            </h2>
+            <p className="text-slate-300 text-sm max-w-xl">
+              {slides[currentSlide].subtitle}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* LAYANAN 1: HASIL PENGAWASAN KAMPEN */}
-            <a 
-              href={import.meta.env.VITE_EXTERNAL_PORTAL_URL || 'https://s.id/HASILPENGAWASANKAMPEN'} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="group bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-blue-500/50 p-6 rounded-2xl transition-all shadow-lg flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-blue-600/20 border border-blue-500/30 rounded-xl text-blue-400 group-hover:scale-105 transition-transform">
-                    <ClipboardList className="w-7 h-7" />
-                  </div>
-                  <span className="flex items-center gap-1 text-[11px] text-blue-400 font-medium bg-blue-950/60 px-2.5 py-1 rounded-full border border-blue-800/50">
-                    Portal Eksternal <ExternalLink className="w-3 h-3" />
-                  </span>
-                </div>
-                <h4 className="text-lg font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">
-                  HASIL PENGAWASAN KAMPEN
-                </h4>
-                <p className="text-slate-400 text-xs md:text-sm leading-relaxed mb-6">
-                  Akses portal rekapitulasi dan dokumentasi laporan kegiatan pengawasan harian petugas bandara.
-                </p>
-              </div>
-              <div className="flex items-center text-xs font-semibold text-blue-400 group-hover:translate-x-1 transition-transform">
-                Buka Portal Rekap <ArrowRight className="w-4 h-4 ml-1.5" />
-              </div>
-            </a>
+          <button
+            onClick={() => setCurrentSlide(prev => (prev === 0 ? slides.length - 1 : prev - 1))}
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-slate-900/60 hover:bg-slate-900 text-white rounded-full backdrop-blur border border-slate-700/50 opacity-0 group-hover:opacity-100 transition"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => setCurrentSlide(prev => (prev === slides.length - 1 ? 0 : prev + 1))}
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-slate-900/60 hover:bg-slate-900 text-white rounded-full backdrop-blur border border-slate-700/50 opacity-0 group-hover:opacity-100 transition"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+      </main>
 
-            {/* LAYANAN 2: MONITORING PERSONIL & FASKAMPEN */}
-            <div 
-              onClick={onLoginClick}
-              className="cursor-pointer group bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-emerald-500/50 p-6 rounded-2xl transition-all shadow-lg flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-emerald-600/20 border border-emerald-500/30 rounded-xl text-emerald-400 group-hover:scale-105 transition-transform">
-                    <ShieldAlert className="w-7 h-7" />
-                  </div>
-                  <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-800/50">
-                    Sistem Utama
-                  </span>
-                </div>
-                <h4 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors">
-                  Sistem Monitoring Personil & Fasilitas Keamanan Penerbangan
-                </h4>
-                <p className="text-slate-400 text-xs md:text-sm leading-relaxed mb-6">
-                  Sistem pemantauan real-time Personil & fasilitas keamanan penerbangan Kantor Otoritas Bandar Udara Wilayah II.
-                </p>
+      {/* Modal Login Pegawai */}
+      {showLoginModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-6 relative">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-2">
+                <Lock className="w-5 h-5 text-blue-500" />
+                <h3 className="font-bold text-white text-base">Akses Sistem Monitoring</h3>
               </div>
-              <div className="flex items-center text-xs font-semibold text-emerald-400 group-hover:translate-x-1 transition-transform">
-                Masuk ke Dashboard Monitoring <ArrowRight className="w-4 h-4 ml-1.5" />
-              </div>
+              <button
+                onClick={() => setShowLoginModal(false)}
+                className="text-slate-400 hover:text-white text-sm font-bold"
+              >
+                ✕
+              </button>
             </div>
 
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  NIP / Email Pegawai
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: 19980101... atau nama@otban2.go.id"
+                  value={identityInput}
+                  onChange={(e) => setIdentityInput(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Peran (Role)
+                </label>
+                <select
+                  value={roleInput}
+                  onChange={(e) => setRoleInput(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="operator">User Operator (Hanya Data Sendiri)</option>
+                  <option value="admin">Administrator (Semua Data)</option>
+                </select>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
+                >
+                  <UserCheck className="w-4 h-4" /> Masuk Ke Dashboard
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-
-      </main>
+      )}
     </div>
   );
 }
