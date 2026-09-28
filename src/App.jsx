@@ -114,11 +114,11 @@ export default function App() {
       if (data) {
         setUserProfile(data);
       } else {
-        const isAdmin = userEmail && userEmail.toLowerCase().includes('admin');
+        const isAdminUser = userEmail && userEmail.toLowerCase().includes('admin');
         setUserProfile({ 
           id: userId, 
           email: userEmail,
-          role: isAdmin ? 'ADMIN' : 'STAFF', 
+          role: isAdminUser ? 'ADMIN' : 'STAFF', 
           airport_access: 'UPBU F.L. TOBING' 
         });
       }
@@ -182,8 +182,11 @@ export default function App() {
     );
   };
 
+  const isAdmin = userProfile?.role?.toUpperCase() === 'ADMIN' || (session?.user?.email && session.user.email.toLowerCase().includes('admin'));
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const currentUserId = session?.user?.id;
 
     if (activeTab === 'faskampen') {
       const rawPayload = {
@@ -205,7 +208,7 @@ export default function App() {
         const { error } = await supabase.from('facilities').update(payload).eq('id', editingId);
         if (error) alert("Gagal update fasilitas: " + error.message);
       } else {
-        const { error } = await supabase.from('facilities').insert([payload]);
+        const { error } = await supabase.from('facilities').insert([{ ...payload, user_id: currentUserId }]);
         if (error) alert("Gagal simpan fasilitas: " + error.message);
       }
     } else if (activeTab === 'personel') {
@@ -215,7 +218,7 @@ export default function App() {
         const { error } = await supabase.from('personnel').update(payloadPersonnel).eq('id', editingId);
         if (error) alert("Gagal update personel: " + error.message);
       } else {
-        const { error } = await supabase.from('personnel').insert([payloadPersonnel]);
+        const { error } = await supabase.from('personnel').insert([{ ...payloadPersonnel, user_id: currentUserId }]);
         if (error) alert("Gagal simpan personel: " + error.message);
       }
     } else if (activeTab === 'bandara') {
@@ -225,7 +228,7 @@ export default function App() {
         const { error } = await supabase.from('airports_info').update(payloadAirport).eq('id', editingId);
         if (error) alert("Gagal update bandara: " + error.message);
       } else {
-        const { error } = await supabase.from('airports_info').insert([payloadAirport]);
+        const { error } = await supabase.from('airports_info').insert([{ ...payloadAirport, user_id: currentUserId }]);
         if (error) alert("Gagal simpan bandara: " + error.message);
       }
     }
@@ -235,6 +238,8 @@ export default function App() {
   };
 
   const handleDelete = async (id) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
+
     if (activeTab === 'faskampen') {
       await supabase.from('facilities').delete().eq('id', id);
     } else if (activeTab === 'personel') {
@@ -269,9 +274,21 @@ export default function App() {
     setFormAirport(initialAirportData);
   };
 
-  const isAdmin = userProfile?.role?.toUpperCase() === 'ADMIN' || (session?.user?.email && session.user.email.toLowerCase().includes('admin'));
+  // Filter Privasi Data: Admin bisa melihat semua data, User biasa hanya melihat data milik sendiri
+  const userFacilities = isAdmin 
+    ? facilities 
+    : facilities.filter(item => !item.user_id || item.user_id === session?.user?.id);
 
-  const filteredFacilities = facilities.filter(item => {
+  const userPersonnel = isAdmin 
+    ? personnel 
+    : personnel.filter(item => !item.user_id || item.user_id === session?.user?.id);
+
+  const userAirports = isAdmin 
+    ? airports 
+    : airports.filter(item => !item.user_id || item.user_id === session?.user?.id);
+
+  // Filter pencarian dan filter bandara berdasarkan hasil filter privasi di atas
+  const filteredFacilities = userFacilities.filter(item => {
     const matchesSearch = (item.equipment_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.brand_type || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.facility_location || item.location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -280,7 +297,7 @@ export default function App() {
     return matchesSearch && matchesAirport;
   });
 
-  const filteredPersonnel = personnel.filter(item => {
+  const filteredPersonnel = userPersonnel.filter(item => {
     const matchesSearch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.nip || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.birth_place_date || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -289,7 +306,7 @@ export default function App() {
     return matchesSearch && matchesAirport;
   });
 
-  const filteredAirports = airports.filter(item => {
+  const filteredAirports = userAirports.filter(item => {
     const matchesSearch = (item.airport_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.code_icao_iata || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesAirport = selectedAirport === 'ALL' || item.airport_name === selectedAirport;
