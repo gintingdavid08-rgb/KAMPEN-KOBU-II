@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import LandingPage from './Components/LandingPage';
-import DashboardHeader from './Components/DashboardHeader';
-import DataCard from './Components/DataCard';
-import FormModal from './Components/FormModal';
+import LandingPage from './components/LandingPage';
+import DashboardHeader from './components/DashboardHeader';
+import DataCard from './components/DataCard';
+import FormModal from './components/FormModal';
 import { RefreshCw, Layers, User, PlusCircle } from 'lucide-react';
 
 const LIST_BANDARA = [
