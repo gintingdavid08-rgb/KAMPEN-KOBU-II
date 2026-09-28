@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import LandingPage from './components/LandingPage';
+import LandingPage from './LandingPage';
 import { supabase } from './supabaseClient';
 import { 
   Building2, PlusCircle, CheckCircle2, 
