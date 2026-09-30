@@ -566,9 +566,9 @@ export default function App() {
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-blue-600 rounded-lg"><Building2 className="w-6 h-6 text-white" /></div>
           <div>
-            <h1 className="text-base font-bold tracking-wide text-yellow-400 flex items-center gap-2">
+            <h1 className="text-sm font-bold tracking-wide text-yellow-400 flex items-center gap-2 whitespace-nowrap">
               SISTEM MONITORING PERSONEL & FASILITAS KEAMANAN PENERBANGAN
-              <span className="px-1.5 py-0.5 bg-blue-900/80 text-cyan-300 border border-cyan-500/40 rounded text-[10px] font-extrabold flex items-center gap-1">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-900/80 text-cyan-300 border border-cyan-500/40 rounded text-[10px] font-extrabold">
                 <Sparkles className="w-3 h-3 text-cyan-400 animate-pulse" /> 5.0 AI
               </span>
             </h1>
@@ -692,7 +692,7 @@ export default function App() {
 
           <button 
             onClick={() => { resetForm(); setShowModal(true); }}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium text-sm transition shadow-md"
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg font-medium text-sm transition shadow-md"
           >
             <PlusCircle className="w-4 h-4" />
             Input Data {activeTab === 'faskampen' ? 'Fasilitas' : activeTab === 'personel' ? 'Personel' : 'Bandara'}
