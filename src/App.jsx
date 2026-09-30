@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient';
 import { 
   Building2, PlusCircle, CheckCircle2, 
   Layers, Search, Filter, ShieldCheck, AlertTriangle, 
-  LogOut, Trash2, Edit, User, X, Users, BadgeCheck, Clock, MapPin, Phone, Mail, Plane
+  LogOut, Trash2, Edit, User, X, Users, BadgeCheck, Clock, MapPin, Phone, Mail, Plane, Bell
 } from 'lucide-react';
 
 const LIST_BANDARA = [
@@ -38,6 +38,9 @@ export default function App() {
   const [authMode, setAuthMode] = useState('login');
   const [authError, setAuthError] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // State untuk Modal/Flyout Notifikasi Audit Kelengkapan Data Admin
+  const [showAlertModal, setShowAlertModal] = useState(false);
 
   const initialFaskampen = {
     airport_name: LIST_BANDARA[0],
@@ -86,6 +89,26 @@ export default function App() {
   const [formFaskampen, setFormFaskampen] = useState(initialFaskampen);
   const [formPersonnel, setFormPersonnel] = useState(initialPersonnel);
   const [formAirport, setFormAirport] = useState(initialAirportData);
+
+  // Helper fungsi untuk mendeteksi kolom mana saja yang belum diinput Staf
+  const getFacilityIncompleteFields = (item) => {
+    const missing = [];
+    if (!item.brand_type) missing.push('Merk/Tipe');
+    if (!item.serial_number) missing.push('Serial Number');
+    if (!item.facility_location && !item.location) missing.push('Lokasi Fasilitas');
+    if (!item.installation_year) missing.push('Tahun Instalasi');
+    if (!item.description) missing.push('Keterangan');
+    return missing;
+  };
+
+  const getPersonnelIncompleteFields = (item) => {
+    const missing = [];
+    if (!item.nip) missing.push('NIP/NIK');
+    if (!item.birth_place_date) missing.push('Tempat/Tgl Lahir');
+    if (!item.license_number) missing.push('No. Lisensi');
+    if (!item.expiry_date) missing.push('Masa Berlaku');
+    return missing;
+  };
 
   const calculateLicenseStatus = (expiryDateStr) => {
     if (!expiryDateStr) return { text: 'TIDAK ADA DATA', color: 'text-slate-400 bg-slate-800' };
@@ -250,20 +273,25 @@ export default function App() {
     fetchAllData();
   };
 
-  const handleEdit = (item) => {
+  const handleEdit = (item, tabOverride) => {
+    if (tabOverride) setActiveTab(tabOverride);
+    
     setEditingId(item.id);
-    if (activeTab === 'faskampen') {
+    const targetTab = tabOverride || activeTab;
+
+    if (targetTab === 'faskampen') {
       setFormFaskampen({
         ...initialFaskampen,
         ...item,
         facility_location: item.facility_location || item.location || ''
       });
-    } else if (activeTab === 'personel') {
+    } else if (targetTab === 'personel') {
       setFormPersonnel({ ...initialPersonnel, ...item });
-    } else if (activeTab === 'bandara') {
+    } else if (targetTab === 'bandara') {
       setFormAirport({ ...initialAirportData, ...item });
     }
     setShowModal(true);
+    setShowAlertModal(false);
   };
 
   const resetForm = () => {
@@ -286,6 +314,21 @@ export default function App() {
   const userAirports = isAdmin 
     ? airports 
     : airports.filter(item => !item.user_id || item.user_id === session?.user?.id);
+
+  // Perhitungan Audit Data Kosong (Khusus Alert Admin)
+  const incompleteFacilities = userFacilities.map(f => ({
+    ...f,
+    type: 'faskampen',
+    missing: getFacilityIncompleteFields(f)
+  })).filter(f => f.missing.length > 0);
+
+  const incompletePersonnel = userPersonnel.map(p => ({
+    ...p,
+    type: 'personel',
+    missing: getPersonnelIncompleteFields(p)
+  })).filter(p => p.missing.length > 0);
+
+  const totalIncompleteAlerts = incompleteFacilities.length + incompletePersonnel.length;
 
   // Filter pencarian dan filter bandara berdasarkan hasil filter privasi di atas
   const filteredFacilities = userFacilities.filter(item => {
@@ -362,7 +405,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col">
-      <header className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-wrap justify-between items-center gap-4 sticky top-0 z-10 shadow-lg">
+      <header className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-wrap justify-between items-center gap-4 sticky top-0 z-20 shadow-lg">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-blue-600 rounded-lg"><Building2 className="w-6 h-6 text-white" /></div>
           <div>
@@ -373,7 +416,102 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 relative">
+          {/* FITUR BARU: TOMBOL ALERT NOTIFIKASI KHUSUS ADMIN */}
+          {isAdmin && (
+            <div className="relative">
+              <button 
+                onClick={() => setShowAlertModal(!showAlertModal)}
+                className={`relative p-2 rounded-lg transition border flex items-center gap-1.5 ${
+                  totalIncompleteAlerts > 0 
+                    ? 'bg-amber-950/40 hover:bg-amber-900/60 text-amber-400 border-amber-800/80' 
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                }`}
+                title="Audit Kelengkapan Data"
+              >
+                <Bell className="w-4 h-4" />
+                <span className="text-xs font-bold hidden sm:inline">Alert</span>
+                {totalIncompleteAlerts > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-600 text-[9px] font-bold text-white items-center justify-center">
+                      {totalIncompleteAlerts}
+                    </span>
+                  </span>
+                )}
+              </button>
+
+              {/* FLYOUT PANEL AUDIT DATA INCOMPLETE */}
+              {showAlertModal && (
+                <div className="absolute right-0 top-12 w-80 sm:w-96 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 p-4 text-xs">
+                  <div className="flex justify-between items-center pb-3 border-b border-slate-800 mb-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-400" />
+                      <div>
+                        <h3 className="font-bold text-white">Laporan Data Belum Lengkap</h3>
+                        <p className="text-[10px] text-slate-400">Perlu tindak lanjut / perlengkapan data staf</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setShowAlertModal(false)} className="text-slate-400 hover:text-white p-1">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto space-y-2.5 pr-1">
+                    {totalIncompleteAlerts === 0 ? (
+                      <div className="text-center py-6 text-emerald-400 font-medium">
+                        <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500 opacity-80" />
+                        Semua data terinput dengan lengkap! 🎉
+                      </div>
+                    ) : (
+                      <>
+                        {incompleteFacilities.map(item => (
+                          <div key={`fac-alert-${item.id}`} className="bg-slate-950 p-3 rounded-xl border border-amber-900/50 hover:border-amber-700 transition space-y-1.5">
+                            <div className="flex justify-between items-start">
+                              <span className="px-2 py-0.5 bg-blue-950 text-blue-400 rounded text-[9px] font-bold">FASILITAS</span>
+                              <span className="text-[10px] text-slate-400">{item.airport_name}</span>
+                            </div>
+                            <p className="font-bold text-slate-200">{item.equipment_name || 'Tanpa Nama'}</p>
+                            <div className="text-[11px] text-rose-400 bg-rose-950/30 p-2 rounded border border-rose-900/40">
+                              <span className="text-slate-400 block text-[10px] font-semibold mb-0.5">Kolom Kosong:</span>
+                              {item.missing.join(', ')}
+                            </div>
+                            <button 
+                              onClick={() => handleEdit(item, 'faskampen')}
+                              className="w-full mt-1 py-1 bg-slate-800 hover:bg-slate-700 text-blue-400 font-semibold rounded text-[11px] text-center block"
+                            >
+                              Lengkapi Data Sekarang
+                            </button>
+                          </div>
+                        ))}
+
+                        {incompletePersonnel.map(item => (
+                          <div key={`per-alert-${item.id}`} className="bg-slate-950 p-3 rounded-xl border border-amber-900/50 hover:border-amber-700 transition space-y-1.5">
+                            <div className="flex justify-between items-start">
+                              <span className="px-2 py-0.5 bg-cyan-950 text-cyan-400 rounded text-[9px] font-bold">PERSONEL</span>
+                              <span className="text-[10px] text-slate-400">{item.airport_name}</span>
+                            </div>
+                            <p className="font-bold text-slate-200">{item.name || 'Tanpa Nama'}</p>
+                            <div className="text-[11px] text-rose-400 bg-rose-950/30 p-2 rounded border border-rose-900/40">
+                              <span className="text-slate-400 block text-[10px] font-semibold mb-0.5">Kolom Kosong:</span>
+                              {item.missing.join(', ')}
+                            </div>
+                            <button 
+                              onClick={() => handleEdit(item, 'personel')}
+                              className="w-full mt-1 py-1 bg-slate-800 hover:bg-slate-700 text-blue-400 font-semibold rounded text-[11px] text-center block"
+                            >
+                              Lengkapi Data Sekarang
+                            </button>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center gap-2.5 bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-lg text-xs">
             <div className="p-1.5 bg-slate-800 rounded-full text-blue-400">
               <User className="w-3.5 h-3.5" />
@@ -572,35 +710,47 @@ export default function App() {
                     {filteredFacilities.length === 0 ? (
                       <tr><td colSpan="9" className="text-center py-8 text-slate-500">Tidak ada data fasilitas ditemukan.</td></tr>
                     ) : (
-                      filteredFacilities.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-800/30 transition">
-                          <td className="px-4 py-3 font-bold text-white">{item.equipment_name}</td>
-                          <td className="px-4 py-3 text-slate-300">
-                            <div>{item.brand_type || '-'}</div>
-                            {item.serial_number && <div className="text-[10px] text-slate-500 font-mono">SN: {item.serial_number}</div>}
-                          </td>
-                          <td className="px-4 py-3 text-slate-300 font-medium">{item.facility_location || item.location || '-'}</td>
-                          <td className="px-4 py-3">{item.installation_year || '-'}</td>
-                          <td className="px-4 py-3 font-mono">{item.quantity || 1} Unit</td>
-                          <td className="px-4 py-3">
-                            <span className={`font-mono font-bold ${item.condition_percent >= 80 ? 'text-emerald-400' : item.condition_percent >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>
-                              {item.condition_percent ?? 100}%
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${
-                              item.status === 'LAIK' ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800' : 'bg-rose-950/60 text-rose-400 border-rose-800'
-                            }`}>
-                              {item.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-slate-400 max-w-xs truncate">{item.description || '-'}</td>
-                          <td className="px-4 py-3 text-right space-x-1">
-                            <button onClick={() => handleEdit(item)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-blue-400"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => handleDelete(item.id)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </td>
-                        </tr>
-                      ))
+                      filteredFacilities.map((item) => {
+                        const missing = getFacilityIncompleteFields(item);
+                        return (
+                          <tr key={item.id} className="hover:bg-slate-800/30 transition">
+                            <td className="px-4 py-3 font-bold text-white">
+                              <div className="flex items-center gap-1.5">
+                                {item.equipment_name}
+                                {missing.length > 0 && (
+                                  <span className="px-1.5 py-0.5 bg-amber-950/80 text-amber-400 border border-amber-800 rounded text-[9px] font-semibold flex items-center gap-0.5" title={`Belum lengkap: ${missing.join(', ')}`}>
+                                    <AlertTriangle className="w-2.5 h-2.5" /> Incomplete
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-slate-300">
+                              <div>{item.brand_type || '-'}</div>
+                              {item.serial_number && <div className="text-[10px] text-slate-500 font-mono">SN: {item.serial_number}</div>}
+                            </td>
+                            <td className="px-4 py-3 text-slate-300 font-medium">{item.facility_location || item.location || '-'}</td>
+                            <td className="px-4 py-3">{item.installation_year || '-'}</td>
+                            <td className="px-4 py-3 font-mono">{item.quantity || 1} Unit</td>
+                            <td className="px-4 py-3">
+                              <span className={`font-mono font-bold ${item.condition_percent >= 80 ? 'text-emerald-400' : item.condition_percent >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>
+                                {item.condition_percent ?? 100}%
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${
+                                item.status === 'LAIK' ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800' : 'bg-rose-950/60 text-rose-400 border-rose-800'
+                              }`}>
+                                {item.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-slate-400 max-w-xs truncate">{item.description || '-'}</td>
+                            <td className="px-4 py-3 text-right space-x-1">
+                              <button onClick={() => handleEdit(item)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-blue-400"><Edit className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleDelete(item.id)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -627,10 +777,18 @@ export default function App() {
                     ) : (
                       filteredPersonnel.map((item) => {
                         const statusObj = calculateLicenseStatus(item.expiry_date);
+                        const missing = getPersonnelIncompleteFields(item);
                         return (
                           <tr key={item.id} className="hover:bg-slate-800/30 transition">
                             <td className="px-4 py-3">
-                              <div className="font-bold text-white">{item.name}</div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-white">{item.name}</span>
+                                {missing.length > 0 && (
+                                  <span className="px-1.5 py-0.5 bg-amber-950/80 text-amber-400 border border-amber-800 rounded text-[9px] font-semibold flex items-center gap-0.5" title={`Belum lengkap: ${missing.join(', ')}`}>
+                                    <AlertTriangle className="w-2.5 h-2.5" /> Incomplete
+                                  </span>
+                                )}
+                              </div>
                               {item.nip && <div className="underline text-slate-400 font-mono text-[11px] mt-0.5">{item.nip}</div>}
                             </td>
                             <td className="px-4 py-3 text-slate-300 font-medium">
