@@ -4,7 +4,8 @@ import { supabase } from './supabaseClient';
 import { 
   Building2, PlusCircle, CheckCircle2, 
   Layers, Search, Filter, ShieldCheck, AlertTriangle, 
-  LogOut, Trash2, Edit, User, X, Users, BadgeCheck, Clock, MapPin, Phone, Mail, Plane, Bell
+  LogOut, Trash2, Edit, User, X, Users, BadgeCheck, Clock, MapPin, Phone, Mail, Plane, Bell,
+  Cpu, Bot, Send, Sparkles, Activity, Wrench, RefreshCw
 } from 'lucide-react';
 
 const LIST_BANDARA = [
@@ -39,8 +40,16 @@ export default function App() {
   const [authError, setAuthError] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // State untuk Modal/Flyout Notifikasi Audit Kelengkapan Data Admin
+  // State Notifikasi Audit Admin
   const [showAlertModal, setShowAlertModal] = useState(false);
+
+  // State untuk AI Assistant Chatbot & Predictive Panel
+  const [showAiChat, setShowAiChat] = useState(false);
+  const [aiMessages, setAiMessages] = useState([
+    { sender: 'ai', text: 'Halo! Saya **Otban AI Security Assistant**. Ada yang bisa saya bantu terkait regulasi penerbangan, kalibrasi Faskampen, atau status personel?' }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [selectedPredictiveItem, setSelectedPredictiveItem] = useState(null);
 
   const initialFaskampen = {
     airport_name: LIST_BANDARA[0],
@@ -90,7 +99,7 @@ export default function App() {
   const [formPersonnel, setFormPersonnel] = useState(initialPersonnel);
   const [formAirport, setFormAirport] = useState(initialAirportData);
 
-  // Helper fungsi untuk mendeteksi kolom mana saja yang belum diinput Staf
+  // Helper Audit Data Incomplete
   const getFacilityIncompleteFields = (item) => {
     const missing = [];
     if (!item.brand_type) missing.push('Merk/Tipe');
@@ -108,6 +117,42 @@ export default function App() {
     if (!item.license_number) missing.push('No. Lisensi');
     if (!item.expiry_date) missing.push('Masa Berlaku');
     return missing;
+  };
+
+  // ENGINE PREDICTIVE MAINTENANCE (FEATURE 5.0)
+  const calculatePredictiveMaintenance = (item) => {
+    const currentYear = new Date().getFullYear();
+    const age = item.installation_year ? (currentYear - Number(item.installation_year)) : 0;
+    const condition = item.condition_percent ?? 100;
+    
+    // Algoritma Kalkulasi Health Index & Resiko
+    let healthScore = condition - (age * 4);
+    if (healthScore < 0) healthScore = 5;
+
+    let riskLevel = 'LOW';
+    let recommendation = 'Pemeliharaan Rutin / Perawatan Berkala Normal.';
+    let actionColor = 'text-emerald-400 bg-emerald-950/40 border-emerald-800';
+
+    if (item.status === 'TIDAK LAIK' || condition < 50 || age >= 8) {
+      riskLevel = 'CRITICAL';
+      recommendation = 'Peralatan membutuhkan perbaikan total / penggantian unit baru (Overhaul Required).';
+      actionColor = 'text-rose-400 bg-rose-950/40 border-rose-800';
+    } else if (condition < 80 || age >= 4) {
+      riskLevel = 'MEDIUM';
+      recommendation = 'Disarankan Kalibrasi Ulang Sensor/Komponen & Pengujian Uji Laik Operasi.';
+      actionColor = 'text-amber-400 bg-amber-950/40 border-amber-800';
+    }
+
+    const estimatedRemainingLife = Math.max(0, 10 - age);
+
+    return {
+      age,
+      healthScore: Math.min(100, Math.max(0, healthScore)),
+      riskLevel,
+      recommendation,
+      estimatedRemainingLife,
+      actionColor
+    };
   };
 
   const calculateLicenseStatus = (expiryDateStr) => {
@@ -302,7 +347,34 @@ export default function App() {
     setFormAirport(initialAirportData);
   };
 
-  // Filter Privasi Data: Admin bisa melihat semua data, User biasa hanya melihat data milik sendiri
+  // AI Chat Assistant Logic
+  const handleSendAiMessage = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userMsg = chatInput;
+    setAiMessages(prev => [...prev, { sender: 'user', text: userMsg }]);
+    setChatInput('');
+
+    setTimeout(() => {
+      let aiReply = "Maaf, saya belum memahami pertanyaan Anda secara spesifik. Cobalah bertanya seputar 'kalibrasi x-ray', 'lisensi avsec', atau 'jumlah fasilitas'.";
+      const q = userMsg.toLowerCase();
+
+      if (q.includes('lisensi') || q.includes('skp') || q.includes('personel')) {
+        aiReply = `Berdasarkan data sistem, saat ini terdapat **${personnel.length} Personel Avsec** terdaftar. Pastikan lisensi diperpanjang sebelum masa berlaku habis (peringatan muncul H-14).`;
+      } else if (q.includes('faskampen') || q.includes('fasilitas') || q.includes('alat')) {
+        aiReply = `Sistem mencatat **${facilities.length} item Faskampen**. Gunakan fitur **Predictive Maintenance (Tombol AI)** pada tabel untuk menganalisis risiko kerusakan alat.`;
+      } else if (q.includes('kalibrasi') || q.includes('x-ray') || q.includes('wtmd')) {
+        aiReply = "Sesuai Standar Operasional Penerbangan, pengujian dan kalibrasi rutin X-Ray & WTMD wajib dilakukan secara bulanan/tahunan sesuai KM 36 Tahun 2024.";
+      } else if (q.includes('otban') || q.includes('wilayah 2') || q.includes('medan')) {
+        aiReply = "Kantor Otoritas Bandar Udara Wilayah II Medan membawahi pengawasan keselamatan & keamanan penerbangan untuk bandara di wilayah Sumatra Utara, Aceh, dan sekitarnya.";
+      }
+
+      setAiMessages(prev => [...prev, { sender: 'ai', text: aiReply }]);
+    }, 600);
+  };
+
+  // Filter Privasi Data
   const userFacilities = isAdmin 
     ? facilities 
     : facilities.filter(item => !item.user_id || item.user_id === session?.user?.id);
@@ -315,7 +387,7 @@ export default function App() {
     ? airports 
     : airports.filter(item => !item.user_id || item.user_id === session?.user?.id);
 
-  // Perhitungan Audit Data Kosong (Khusus Alert Admin)
+  // Perhitungan Audit Data Kosong
   const incompleteFacilities = userFacilities.map(f => ({
     ...f,
     type: 'faskampen',
@@ -330,7 +402,7 @@ export default function App() {
 
   const totalIncompleteAlerts = incompleteFacilities.length + incompletePersonnel.length;
 
-  // Filter pencarian dan filter bandara berdasarkan hasil filter privasi di atas
+  // Filter pencarian
   const filteredFacilities = userFacilities.filter(item => {
     const matchesSearch = (item.equipment_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.brand_type || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -404,20 +476,23 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col relative">
       <header className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-wrap justify-between items-center gap-4 sticky top-0 z-20 shadow-lg">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-blue-600 rounded-lg"><Building2 className="w-6 h-6 text-white" /></div>
           <div>
-            <h1 className="text-base font-bold tracking-wide text-yellow-400">
+            <h1 className="text-base font-bold tracking-wide text-yellow-400 flex items-center gap-2">
               SISTEM MONITORING PERSONEL & FASILITAS KEAMANAN PENERBANGAN
+              <span className="px-2 py-0.5 bg-blue-900/80 text-cyan-300 border border-cyan-500/40 rounded text-[10px] font-extrabold flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-cyan-400 animate-pulse" /> 5.0 AI-Ready
+              </span>
             </h1>
-            <p className="text-xs text-blue-400">OTORITAS BANDAR UDARA WILAYAH II - Live Operational Dashboard</p>
+            <p className="text-xs text-blue-400">OTORITAS BANDAR UDARA WILAYAH II - Live Operational Intelligence</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3 relative">
-          {/* FITUR BARU: TOMBOL ALERT NOTIFIKASI KHUSUS ADMIN */}
+          {/* TOMBOL ALERT NOTIFIKASI KHUSUS ADMIN */}
           {isAdmin && (
             <div className="relative">
               <button 
@@ -698,11 +773,11 @@ export default function App() {
                       <th className="px-4 py-3">Nama Peralatan</th>
                       <th className="px-4 py-3">Merk / Tipe / SN</th>
                       <th className="px-4 py-3">Lokasi Fasilitas</th>
-                      <th className="px-4 py-3">Tahun Instalasi</th>
+                      <th className="px-4 py-3">Thn / Health Index</th>
                       <th className="px-4 py-3">Jumlah</th>
                       <th className="px-4 py-3">Kondisi (%)</th>
                       <th className="px-4 py-3">Status Operasional</th>
-                      <th className="px-4 py-3">Keterangan</th>
+                      <th className="px-4 py-3">AI Maintenance</th>
                       <th className="px-4 py-3 text-right">Aksi</th>
                     </tr>
                   </thead>
@@ -712,6 +787,7 @@ export default function App() {
                     ) : (
                       filteredFacilities.map((item) => {
                         const missing = getFacilityIncompleteFields(item);
+                        const aiAnalysis = calculatePredictiveMaintenance(item);
                         return (
                           <tr key={item.id} className="hover:bg-slate-800/30 transition">
                             <td className="px-4 py-3 font-bold text-white">
@@ -729,7 +805,12 @@ export default function App() {
                               {item.serial_number && <div className="text-[10px] text-slate-500 font-mono">SN: {item.serial_number}</div>}
                             </td>
                             <td className="px-4 py-3 text-slate-300 font-medium">{item.facility_location || item.location || '-'}</td>
-                            <td className="px-4 py-3">{item.installation_year || '-'}</td>
+                            <td className="px-4 py-3">
+                              <div>Thn: {item.installation_year || '-'}</div>
+                              <div className="text-[10px] text-cyan-400 font-mono flex items-center gap-1 mt-0.5">
+                                <Activity className="w-3 h-3 text-cyan-400" /> Skor: {aiAnalysis.healthScore}%
+                              </div>
+                            </td>
                             <td className="px-4 py-3 font-mono">{item.quantity || 1} Unit</td>
                             <td className="px-4 py-3">
                               <span className={`font-mono font-bold ${item.condition_percent >= 80 ? 'text-emerald-400' : item.condition_percent >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>
@@ -743,7 +824,14 @@ export default function App() {
                                 {item.status}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-slate-400 max-w-xs truncate">{item.description || '-'}</td>
+                            <td className="px-4 py-3">
+                              <button 
+                                onClick={() => setSelectedPredictiveItem({ item, analysis: aiAnalysis })}
+                                className="px-2 py-1 bg-slate-800 hover:bg-cyan-950/80 text-cyan-300 border border-cyan-800/80 rounded flex items-center gap-1 text-[10px] font-semibold transition"
+                              >
+                                <Cpu className="w-3 h-3 text-cyan-400" /> Analisis AI
+                              </button>
+                            </td>
                             <td className="px-4 py-3 text-right space-x-1">
                               <button onClick={() => handleEdit(item)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-blue-400"><Edit className="w-3.5 h-3.5" /></button>
                               <button onClick={() => handleDelete(item.id)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -886,6 +974,128 @@ export default function App() {
         )}
       </main>
 
+      {/* FLOATING AI CHATBOT BUTTON & WINDOW (FEATURE 5.0) */}
+      <div className="fixed bottom-6 right-6 z-40">
+        {!showAiChat ? (
+          <button 
+            onClick={() => setShowAiChat(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white px-4 py-3 rounded-full shadow-2xl transition border border-cyan-400/30 group"
+          >
+            <Bot className="w-5 h-5 group-hover:rotate-12 transition transform" />
+            <span className="text-xs font-bold tracking-wide">Otban AI Assistant</span>
+          </button>
+        ) : (
+          <div className="w-80 sm:w-96 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col h-96 text-xs overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-900 to-slate-900 p-3 border-b border-slate-800 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-cyan-500/20 rounded-lg text-cyan-400">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white">Otban AI Security Assistant</h3>
+                  <p className="text-[10px] text-cyan-400">Online | Aviation Intelligence 5.0</p>
+                </div>
+              </div>
+              <button onClick={() => setShowAiChat(false)} className="text-slate-400 hover:text-white p-1">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 p-3 overflow-y-auto space-y-3 bg-slate-950/50">
+              {aiMessages.map((m, idx) => (
+                <div key={idx} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] p-2.5 rounded-xl text-[11px] leading-relaxed ${
+                    m.sender === 'user' 
+                      ? 'bg-blue-600 text-white rounded-br-none' 
+                      : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-none'
+                  }`}>
+                    {m.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <form onSubmit={handleSendAiMessage} className="p-2 bg-slate-900 border-t border-slate-800 flex gap-2">
+              <input 
+                type="text" 
+                value={chatInput} 
+                onChange={(e) => setChatInput(e.target.value)} 
+                placeholder="Tanyakan sesuatu seputar Faskampen..." 
+                className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500"
+              />
+              <button type="submit" className="p-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition">
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+
+      {/* MODAL DETAIL PREDICTIVE MAINTENANCE (FEATURE 5.0) */}
+      {selectedPredictiveItem && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="relative w-full max-w-lg bg-slate-900 border border-slate-700 p-6 rounded-2xl text-slate-100 shadow-2xl">
+            <button onClick={() => setSelectedPredictiveItem(null)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="flex items-center gap-2 text-cyan-400 mb-2">
+              <Cpu className="w-5 h-5" />
+              <h2 className="font-bold text-base text-white">AI Predictive Maintenance Health Check</h2>
+            </div>
+            <p className="text-xs text-slate-400 mb-4">Analisis prediktif kesehatan peralatan dan umur teknis fasilitas.</p>
+
+            <div className="space-y-4 text-xs">
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center">
+                <div>
+                  <p className="text-slate-400 text-[10px]">Peralatan</p>
+                  <p className="font-bold text-white text-sm">{selectedPredictiveItem.item.equipment_name}</p>
+                  <p className="text-[10px] text-slate-500">{selectedPredictiveItem.item.airport_name} | {selectedPredictiveItem.item.facility_location}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-slate-400 text-[10px]">Kategori Risiko</p>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${selectedPredictiveItem.analysis.actionColor}`}>
+                    {selectedPredictiveItem.analysis.riskLevel}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <p className="text-slate-500 text-[10px]">Umur Peralatan</p>
+                  <p className="text-lg font-bold text-white mt-1">{selectedPredictiveItem.analysis.age} <span className="text-xs text-slate-500">Thn</span></p>
+                </div>
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <p className="text-slate-500 text-[10px]">Health Index</p>
+                  <p className="text-lg font-bold text-cyan-400 mt-1">{selectedPredictiveItem.analysis.healthScore}%</p>
+                </div>
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <p className="text-slate-500 text-[10px]">Estimasi Sisa Umur</p>
+                  <p className="text-lg font-bold text-emerald-400 mt-1">{selectedPredictiveItem.analysis.estimatedRemainingLife} <span className="text-xs text-slate-500">Thn</span></p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                <p className="text-slate-400 text-[10px] font-bold flex items-center gap-1 text-cyan-400">
+                  <Wrench className="w-3.5 h-3.5" /> Rekomendasi Tindakan AI:
+                </p>
+                <p className="text-slate-200 leading-relaxed font-medium">
+                  {selectedPredictiveItem.analysis.recommendation}
+                </p>
+              </div>
+
+              <button 
+                onClick={() => setSelectedPredictiveItem(null)}
+                className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-lg text-xs transition"
+              >
+                Tutup Analisis
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL INPUT / EDIT DATA */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 p-6 rounded-2xl text-slate-100 shadow-2xl my-8 max-h-[90vh] overflow-y-auto">
