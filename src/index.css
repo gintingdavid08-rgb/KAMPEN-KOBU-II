@@ -254,3 +254,48 @@
     height: 60px;
   }
 }
+@media print {
+  /* 1. Atur halaman cetak ke Landscape secara otomatis */
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  /* 2. Sembunyikan elemen UI yang tidak perlu dicetak */
+  body * {
+    visibility: hidden;
+  }
+
+  /* 3. Tampilkan hanya area tabel/dokumen cetak */
+  #print-area, #print-area * {
+    visibility: visible;
+  }
+
+  #print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  /* 4. Pastikan Header Tabel (th) dan Isi Tabel (td) Terlihat Jelas */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 10pt !important;
+  }
+
+  th, td {
+    border: 1px solid #000 !important;
+    padding: 6px 8px !important;
+    text-align: left !important;
+    color: #000 !important;
+  }
+
+  th {
+    background-color: #f2f2f2 !important; /* Latar header */
+    font-weight: bold !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
