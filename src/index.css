@@ -92,3 +92,54 @@
     page-break-inside: avoid;
   }
 }
+@media print {
+  /* 1. Ubah orientasi kertas ke Landscape agar semua kolom muat */
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-family: Arial, sans-serif;
+    font-size: 10pt;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* 2. Paksa kontainer dan tabel menggunakan 100% lebar kertas */
+  div, main, .container, table {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  table {
+    border-collapse: collapse !important;
+    margin-top: 15px;
+    table-layout: auto; /* Membagi lebar kolom secara fleksibel */
+  }
+
+  /* 3. Rapikan sel tabel (header & isi) */
+  th, td {
+    border: 1px solid #000 !important;
+    padding: 6px 8px !important;
+    text-align: center; /* Ubah ke left jika ingin rata kiri */
+    vertical-align: middle;
+    word-break: break-word; /* Mencegah teks panjang merusak ukuran sel */
+  }
+
+  th {
+    background-color: #f2f2f2 !important;
+    font-weight: bold;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* 4. Sembunyikan elemen aplikasi yang tidak perlu dicetak */
+  nav, sidebar, header, footer, button, .no-print {
+    display: none !important;
+  }
+}
