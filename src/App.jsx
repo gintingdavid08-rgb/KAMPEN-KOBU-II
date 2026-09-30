@@ -562,17 +562,17 @@ export default function App() {
         <p className="text-xs text-center mt-1">Filter Bandara: {selectedAirport} | Tanggal Cetak: {new Date().toLocaleDateString('id-ID')}</p>
       </div>
 
-      <header className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-wrap justify-between items-center gap-4 sticky top-0 z-20 shadow-lg print:hidden">
+      <header className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center gap-4 sticky top-0 z-20 shadow-lg print:hidden">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-blue-600 rounded-lg"><Building2 className="w-6 h-6 text-white" /></div>
           <div>
             <h1 className="text-base font-bold tracking-wide text-yellow-400 flex items-center gap-2">
               SISTEM MONITORING PERSONEL & FASILITAS KEAMANAN PENERBANGAN
-              <span className="px-1 py-0.3 bg-blue-900/80 text-cyan-300 border border-cyan-500/40 rounded text-[10px] font-extrabold flex items-center gap-1">
-                <Sparkles className="w-2 h-2 text-cyan-400 animate-pulse" /> 5.0 AI-Ready
+              <span className="px-1.5 py-0.5 bg-blue-900/80 text-cyan-300 border border-cyan-500/40 rounded text-[10px] font-extrabold flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-cyan-400 animate-pulse" /> 5.0 AI
               </span>
             </h1>
-            <p className="text-xs text-blue-400">OTORITAS BANDAR UDARA WILAYAH II - Live Operational Intelligence</p>
+            <p className="text-[11px] text-blue-400">OTORITAS BANDAR UDARA WILAYAH II - Live Operational Intelligence</p>
           </div>
         </div>
 
