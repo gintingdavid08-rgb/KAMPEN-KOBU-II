@@ -46,3 +46,49 @@
     visibility: visible !important;
   }
 }
+/* --- Aturan Tambahan Khusus Mode Cetak (Print/PDF) --- */
+@media print {
+  /* 1. Atur ukuran halaman dan margin kertas */
+  @page {
+    size: A4 portrait; /* Ubah ke 'landscape' jika kolom tabel sangat banyak */
+    margin: 15mm;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-family: Arial, sans-serif;
+    font-size: 12pt;
+  }
+
+  /* 2. Hilangkan garis bawah dan warna biru pada link */
+  a, a:visited {
+    text-decoration: none !important;
+    color: #000 !important;
+  }
+
+  /* 3. Rapikan tabel agar memenuhi lebar halaman dan border menyatu rapi */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 10px;
+  }
+
+  th, td {
+    border: 1px solid #000 !important;
+    padding: 8px !important;
+    text-align: left;
+    font-size: 10pt;
+  }
+
+  th {
+    background-color: #f2f2f2 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* 4. Mencegah baris tabel terpotong di tengah halaman */
+  tr {
+    page-break-inside: avoid;
+  }
+}
