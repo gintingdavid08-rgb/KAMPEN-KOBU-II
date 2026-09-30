@@ -5,7 +5,7 @@ import {
   Building2, PlusCircle, CheckCircle2, 
   Layers, Search, Filter, ShieldCheck, AlertTriangle, 
   LogOut, Trash2, Edit, User, X, Users, BadgeCheck, Clock, MapPin, Phone, Mail, Plane, Bell,
-  Cpu, Bot, Send, Sparkles, Activity, Wrench, RefreshCw
+  Cpu, Bot, Send, Sparkles, Activity, Wrench, RefreshCw, FileText, Download, Printer
 } from 'lucide-react';
 
 const LIST_BANDARA = [
@@ -125,7 +125,6 @@ export default function App() {
     const age = item.installation_year ? (currentYear - Number(item.installation_year)) : 0;
     const condition = item.condition_percent ?? 100;
     
-    // Algoritma Kalkulasi Health Index & Resiko
     let healthScore = condition - (age * 4);
     if (healthScore < 0) healthScore = 5;
 
@@ -437,6 +436,71 @@ export default function App() {
   const personelPerluPerpanjang = filteredPersonnel.filter(i => calculateLicenseStatus(i.expiry_date).text === 'Diharapkan Segera Memperpanjang License').length;
   const personelMati = filteredPersonnel.filter(i => calculateLicenseStatus(i.expiry_date).text === 'MATI').length;
 
+  // --- FITUR EXPORT CSV ---
+  const exportToCSV = () => {
+    let headers = [];
+    let rows = [];
+    let filename = `Laporan_Otban2_${activeTab}_${new Date().toISOString().slice(0, 10)}.csv`;
+
+    if (activeTab === 'faskampen') {
+      headers = ['Bandara', 'Nama Peralatan', 'Merk/Tipe', 'Serial Number', 'Lokasi', 'Tahun Instalasi', 'Jumlah', 'Kondisi (%)', 'Status', 'Keterangan'];
+      rows = filteredFacilities.map(item => [
+        `"${item.airport_name || ''}"`,
+        `"${item.equipment_name || ''}"`,
+        `"${item.brand_type || ''}"`,
+        `"${item.serial_number || ''}"`,
+        `"${item.facility_location || item.location || ''}"`,
+        `"${item.installation_year || ''}"`,
+        `"${item.quantity || 1}"`,
+        `"${item.condition_percent ?? 100}"`,
+        `"${item.status || ''}"`,
+        `"${item.description || ''}"`
+      ]);
+    } else if (activeTab === 'personel') {
+      headers = ['Bandara', 'Nama Lengkap', 'NIP/NIK', 'Tempat/Tgl Lahir', 'Tingkat Lisensi', 'No. Lisensi (SKP)', 'Masa Berlaku', 'Status Lisensi'];
+      rows = filteredPersonnel.map(item => [
+        `"${item.airport_name || ''}"`,
+        `"${item.name || ''}"`,
+        `"${item.nip || ''}"`,
+        `"${item.birth_place_date || ''}"`,
+        `"${item.license_level || ''}"`,
+        `"${item.license_number || ''}"`,
+        `"${item.expiry_date || ''}"`,
+        `"${calculateLicenseStatus(item.expiry_date).text}"`
+      ]);
+    } else if (activeTab === 'bandara') {
+      headers = ['Nama Bandara', 'ICAO/IATA', 'Penyelenggara', 'Kelas', 'Layanan LLP', 'Jam Operasional', 'Koordinat ARP', 'Elevasi', 'Pesawat Terbesar', 'Dimensi Runway', 'Kategori Keamanan', 'PKP-PK'];
+      rows = filteredAirports.map(item => [
+        `"${item.airport_name || ''}"`,
+        `"${item.code_icao_iata || ''}"`,
+        `"${item.organizer || ''}"`,
+        `"${item.class_category || ''}"`,
+        `"${item.llp_service || ''}"`,
+        `"${item.operating_hours || ''}"`,
+        `"${item.arp_coordinate || ''}"`,
+        `"${item.elevation || ''}"`,
+        `"${item.largest_aircraft || ''}"`,
+        `"${item.runway_dimension || ''}"`,
+        `"${item.security_category || ''}"`,
+        `"${item.pkp_pk_category || ''}"`
+      ]);
+    }
+
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // --- FITUR CETAK / EXPORT PDF ---
+  const handlePrint = () => {
+    window.print();
+  };
+
   if (!session) {
     return (
       <>
@@ -476,8 +540,29 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col relative">
-      <header className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-wrap justify-between items-center gap-4 sticky top-0 z-20 shadow-lg">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col relative print:bg-white print:text-black">
+      {/* STYLE KHUSUS MEDIA PRINT (PDF) */}
+      <style>{`
+        @media print {
+          body { background-color: white !important; color: black !important; }
+          .print\\:hidden { display: none !important; }
+          .print\\:block { display: block !important; }
+          .print\\:text-black { color: black !important; }
+          .print\\:border-black { border-color: #000 !important; }
+          table { width: 100% !important; border-collapse: collapse !important; color: black !important; }
+          th, td { border: 1px solid #333 !important; padding: 6px !important; text-align: left !important; color: black !important; font-size: 10px !important; }
+          th { background-color: #f0f0f0 !important; color: black !important; font-weight: bold !important; }
+        }
+      `}</style>
+
+      {/* HEADER TAMPILAN PRINT / PDF LAPORAN */}
+      <div className="hidden print:block p-4 mb-4 border-b-2 border-black">
+        <h1 className="text-xl font-bold uppercase text-center">LAPORAN MONITORING {activeTab.toUpperCase()}</h1>
+        <h2 className="text-md font-semibold text-center">KANTOR OTORITAS BANDAR UDARA WILAYAH II MEDAN</h2>
+        <p className="text-xs text-center mt-1">Filter Bandara: {selectedAirport} | Tanggal Cetak: {new Date().toLocaleDateString('id-ID')}</p>
+      </div>
+
+      <header className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-wrap justify-between items-center gap-4 sticky top-0 z-20 shadow-lg print:hidden">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-blue-600 rounded-lg"><Building2 className="w-6 h-6 text-white" /></div>
           <div>
@@ -619,7 +704,7 @@ export default function App() {
         </div>
       </header>
 
-      <div className="bg-slate-900/80 border-b border-slate-800 px-6 pt-3 flex gap-2">
+      <div className="bg-slate-900/80 border-b border-slate-800 px-6 pt-3 flex gap-2 print:hidden">
         <button
           onClick={() => setActiveTab('faskampen')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-t-lg font-semibold text-sm transition border-b-2 ${
@@ -648,7 +733,7 @@ export default function App() {
         </button>
       </div>
 
-      <div className="bg-slate-900/50 border-b border-slate-800 p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="bg-slate-900/50 border-b border-slate-800 p-6 grid grid-cols-1 md:grid-cols-3 gap-4 print:hidden">
         {activeTab === 'faskampen' && (
           <>
             <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
@@ -734,7 +819,7 @@ export default function App() {
         )}
       </div>
 
-      <div className="px-6 pt-4 flex flex-wrap gap-4 justify-between items-center">
+      <div className="px-6 pt-4 flex flex-wrap gap-4 justify-between items-center print:hidden">
         <div className="flex gap-3 flex-1 max-w-lg">
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
@@ -758,6 +843,26 @@ export default function App() {
             </select>
           </div>
         </div>
+
+        {/* TOMBOL LAPORAN & EXPORT PDF/CSV */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportToCSV}
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 rounded-lg text-xs font-semibold transition"
+            title="Export data ke Format CSV / Excel"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export CSV</span>
+          </button>
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 rounded-lg text-xs font-semibold transition"
+            title="Cetak Laporan atau Simpan ke PDF"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Cetak / PDF</span>
+          </button>
+        </div>
       </div>
 
       <main className="p-6 flex-1">
@@ -766,9 +871,9 @@ export default function App() {
         ) : (
           <>
             {activeTab === 'faskampen' && (
-              <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+              <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl print:bg-white print:border-none print:shadow-none">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-800/60 border-b border-slate-800 text-slate-400 uppercase tracking-wider">
+                  <thead className="bg-slate-800/60 border-b border-slate-800 text-slate-400 uppercase tracking-wider print:bg-slate-200 print:text-black">
                     <tr>
                       <th className="px-4 py-3">Nama Peralatan</th>
                       <th className="px-4 py-3">Merk / Tipe / SN</th>
@@ -777,11 +882,11 @@ export default function App() {
                       <th className="px-4 py-3">Jumlah</th>
                       <th className="px-4 py-3">Kondisi (%)</th>
                       <th className="px-4 py-3">Status Operasional</th>
-                      <th className="px-4 py-3">AI Maintenance</th>
-                      <th className="px-4 py-3 text-right">Aksi</th>
+                      <th className="px-4 py-3 print:hidden">AI Maintenance</th>
+                      <th className="px-4 py-3 text-right print:hidden">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/50 text-slate-300">
+                  <tbody className="divide-y divide-slate-800/50 text-slate-300 print:divide-slate-300 print:text-black">
                     {filteredFacilities.length === 0 ? (
                       <tr><td colSpan="9" className="text-center py-8 text-slate-500">Tidak ada data fasilitas ditemukan.</td></tr>
                     ) : (
@@ -789,42 +894,42 @@ export default function App() {
                         const missing = getFacilityIncompleteFields(item);
                         const aiAnalysis = calculatePredictiveMaintenance(item);
                         return (
-                          <tr key={item.id} className="hover:bg-slate-800/30 transition">
-                            <td className="px-4 py-3 font-bold text-white">
+                          <tr key={item.id} className="hover:bg-slate-800/30 transition print:hover:bg-transparent">
+                            <td className="px-4 py-3 font-bold text-white print:text-black">
                               <div className="flex items-center gap-1.5">
                                 {item.equipment_name}
                                 {missing.length > 0 && (
-                                  <span className="px-1.5 py-0.5 bg-amber-950/80 text-amber-400 border border-amber-800 rounded text-[9px] font-semibold flex items-center gap-0.5" title={`Belum lengkap: ${missing.join(', ')}`}>
+                                  <span className="px-1.5 py-0.5 bg-amber-950/80 text-amber-400 border border-amber-800 rounded text-[9px] font-semibold flex items-center gap-0.5 print:hidden" title={`Belum lengkap: ${missing.join(', ')}`}>
                                     <AlertTriangle className="w-2.5 h-2.5" /> Incomplete
                                   </span>
                                 )}
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-slate-300">
+                            <td className="px-4 py-3 text-slate-300 print:text-black">
                               <div>{item.brand_type || '-'}</div>
-                              {item.serial_number && <div className="text-[10px] text-slate-500 font-mono">SN: {item.serial_number}</div>}
+                              {item.serial_number && <div className="text-[10px] text-slate-500 font-mono print:text-slate-700">SN: {item.serial_number}</div>}
                             </td>
-                            <td className="px-4 py-3 text-slate-300 font-medium">{item.facility_location || item.location || '-'}</td>
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-3 text-slate-300 font-medium print:text-black">{item.facility_location || item.location || '-'}</td>
+                            <td className="px-4 py-3 print:text-black">
                               <div>Thn: {item.installation_year || '-'}</div>
-                              <div className="text-[10px] text-cyan-400 font-mono flex items-center gap-1 mt-0.5">
-                                <Activity className="w-3 h-3 text-cyan-400" /> Skor: {aiAnalysis.healthScore}%
+                              <div className="text-[10px] text-cyan-400 font-mono flex items-center gap-1 mt-0.5 print:text-black">
+                                <Activity className="w-3 h-3 text-cyan-400 print:hidden" /> Skor: {aiAnalysis.healthScore}%
                               </div>
                             </td>
-                            <td className="px-4 py-3 font-mono">{item.quantity || 1} Unit</td>
-                            <td className="px-4 py-3">
-                              <span className={`font-mono font-bold ${item.condition_percent >= 80 ? 'text-emerald-400' : item.condition_percent >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>
+                            <td className="px-4 py-3 font-mono print:text-black">{item.quantity || 1} Unit</td>
+                            <td className="px-4 py-3 print:text-black">
+                              <span className={`font-mono font-bold ${item.condition_percent >= 80 ? 'text-emerald-400' : item.condition_percent >= 50 ? 'text-amber-400' : 'text-rose-400'} print:text-black`}>
                                 {item.condition_percent ?? 100}%
                               </span>
                             </td>
-                            <td className="px-4 py-3">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${
+                            <td className="px-4 py-3 print:text-black">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border print:border-none print:p-0 ${
                                 item.status === 'LAIK' ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800' : 'bg-rose-950/60 text-rose-400 border-rose-800'
-                              }`}>
+                              } print:text-black`}>
                                 {item.status}
                               </span>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-3 print:hidden">
                               <button 
                                 onClick={() => setSelectedPredictiveItem({ item, analysis: aiAnalysis })}
                                 className="px-2 py-1 bg-slate-800 hover:bg-cyan-950/80 text-cyan-300 border border-cyan-800/80 rounded flex items-center gap-1 text-[10px] font-semibold transition"
@@ -832,7 +937,7 @@ export default function App() {
                                 <Cpu className="w-3 h-3 text-cyan-400" /> Analisis AI
                               </button>
                             </td>
-                            <td className="px-4 py-3 text-right space-x-1">
+                            <td className="px-4 py-3 text-right space-x-1 print:hidden">
                               <button onClick={() => handleEdit(item)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-blue-400"><Edit className="w-3.5 h-3.5" /></button>
                               <button onClick={() => handleDelete(item.id)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                             </td>
@@ -846,9 +951,9 @@ export default function App() {
             )}
 
             {activeTab === 'personel' && (
-              <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+              <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl print:bg-white print:border-none print:shadow-none">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-800/60 border-b border-slate-800 text-slate-400 uppercase tracking-wider">
+                  <thead className="bg-slate-800/60 border-b border-slate-800 text-slate-400 uppercase tracking-wider print:bg-slate-200 print:text-black">
                     <tr>
                       <th className="px-4 py-3">Nama Lengkap / NIP</th>
                       <th className="px-4 py-3">Tempat, Tgl Lahir</th>
@@ -856,10 +961,10 @@ export default function App() {
                       <th className="px-4 py-3">No. Lisensi (SKP)</th>
                       <th className="px-4 py-3">Masa Berlaku</th>
                       <th className="px-4 py-3">Status Lisensi</th>
-                      <th className="px-4 py-3 text-right">Aksi</th>
+                      <th className="px-4 py-3 text-right print:hidden">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/50 text-slate-300">
+                  <tbody className="divide-y divide-slate-800/50 text-slate-300 print:divide-slate-300 print:text-black">
                     {filteredPersonnel.length === 0 ? (
                       <tr><td colSpan="7" className="text-center py-8 text-slate-500">Tidak ada data personel ditemukan.</td></tr>
                     ) : (
@@ -867,34 +972,34 @@ export default function App() {
                         const statusObj = calculateLicenseStatus(item.expiry_date);
                         const missing = getPersonnelIncompleteFields(item);
                         return (
-                          <tr key={item.id} className="hover:bg-slate-800/30 transition">
-                            <td className="px-4 py-3">
+                          <tr key={item.id} className="hover:bg-slate-800/30 transition print:hover:bg-transparent">
+                            <td className="px-4 py-3 print:text-black">
                               <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-white">{item.name}</span>
+                                <span className="font-bold text-white print:text-black">{item.name}</span>
                                 {missing.length > 0 && (
-                                  <span className="px-1.5 py-0.5 bg-amber-950/80 text-amber-400 border border-amber-800 rounded text-[9px] font-semibold flex items-center gap-0.5" title={`Belum lengkap: ${missing.join(', ')}`}>
+                                  <span className="px-1.5 py-0.5 bg-amber-950/80 text-amber-400 border border-amber-800 rounded text-[9px] font-semibold flex items-center gap-0.5 print:hidden" title={`Belum lengkap: ${missing.join(', ')}`}>
                                     <AlertTriangle className="w-2.5 h-2.5" /> Incomplete
                                   </span>
                                 )}
                               </div>
-                              {item.nip && <div className="underline text-slate-400 font-mono text-[11px] mt-0.5">{item.nip}</div>}
+                              {item.nip && <div className="underline text-slate-400 font-mono text-[11px] mt-0.5 print:text-slate-700">{item.nip}</div>}
                             </td>
-                            <td className="px-4 py-3 text-slate-300 font-medium">
+                            <td className="px-4 py-3 text-slate-300 font-medium print:text-black">
                               {item.birth_place_date || '-'}
                             </td>
-                            <td className="px-4 py-3">
-                              <span className="px-2 py-0.5 bg-blue-950 text-blue-400 border border-blue-800 rounded text-[10px] font-bold">
+                            <td className="px-4 py-3 print:text-black">
+                              <span className="px-2 py-0.5 bg-blue-950 text-blue-400 border border-blue-800 rounded text-[10px] font-bold print:border-none print:p-0 print:text-black">
                                 {item.license_level}
                               </span>
                             </td>
-                            <td className="px-4 py-3 font-mono">{item.license_number || '-'}</td>
-                            <td className="px-4 py-3 text-slate-400 font-medium">{item.expiry_date || '-'}</td>
-                            <td className="px-4 py-3">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border inline-block ${statusObj.color}`}>
+                            <td className="px-4 py-3 font-mono print:text-black">{item.license_number || '-'}</td>
+                            <td className="px-4 py-3 text-slate-400 font-medium print:text-black">{item.expiry_date || '-'}</td>
+                            <td className="px-4 py-3 print:text-black">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border inline-block print:border-none print:p-0 ${statusObj.color} print:text-black`}>
                                 {statusObj.text}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-right space-x-1">
+                            <td className="px-4 py-3 text-right space-x-1 print:hidden">
                               <button onClick={() => handleEdit(item)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-blue-400"><Edit className="w-3.5 h-3.5" /></button>
                               <button onClick={() => handleDelete(item.id)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                             </td>
@@ -915,13 +1020,13 @@ export default function App() {
                   </div>
                 ) : (
                   filteredAirports.map((apt) => (
-                    <div key={apt.id} className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4">
-                      <div className="flex justify-between items-start border-b border-slate-800 pb-4">
+                    <div key={apt.id} className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-4 print:bg-white print:border-black print:text-black">
+                      <div className="flex justify-between items-start border-b border-slate-800 pb-4 print:border-black">
                         <div>
-                          <h2 className="text-lg font-bold text-white">{apt.airport_name}</h2>
-                          <p className="text-xs text-blue-400 font-mono mt-0.5">ICAO/IATA: {apt.code_icao_iata || '-'}</p>
+                          <h2 className="text-lg font-bold text-white print:text-black">{apt.airport_name}</h2>
+                          <p className="text-xs text-blue-400 font-mono mt-0.5 print:text-black">ICAO/IATA: {apt.code_icao_iata || '-'}</p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 print:hidden">
                           <button onClick={() => handleEdit(apt)} className="p-2 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded-lg text-xs font-semibold flex items-center gap-1">
                             <Edit className="w-3.5 h-3.5" /> Edit
                           </button>
@@ -932,37 +1037,37 @@ export default function App() {
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                          <p className="text-slate-500 text-[10px] uppercase font-bold">Penyelenggara</p>
-                          <p className="text-slate-200 font-medium mt-1">{apt.organizer || '-'}</p>
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 print:bg-slate-100 print:border-black">
+                          <p className="text-slate-500 text-[10px] uppercase font-bold print:text-slate-700">Penyelenggara</p>
+                          <p className="text-slate-200 font-medium mt-1 print:text-black">{apt.organizer || '-'}</p>
                         </div>
-                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                          <p className="text-slate-500 text-[10px] uppercase font-bold">Kategori Kelas / LLP</p>
-                          <p className="text-slate-200 font-medium mt-1">Kelas {apt.class_category || '-'} / {apt.llp_service || '-'}</p>
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 print:bg-slate-100 print:border-black">
+                          <p className="text-slate-500 text-[10px] uppercase font-bold print:text-slate-700">Kategori Kelas / LLP</p>
+                          <p className="text-slate-200 font-medium mt-1 print:text-black">Kelas {apt.class_category || '-'} / {apt.llp_service || '-'}</p>
                         </div>
-                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                          <p className="text-slate-500 text-[10px] uppercase font-bold">Jam Operasional</p>
-                          <p className="text-slate-200 font-medium mt-1">{apt.operating_hours || '-'}</p>
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 print:bg-slate-100 print:border-black">
+                          <p className="text-slate-500 text-[10px] uppercase font-bold print:text-slate-700">Jam Operasional</p>
+                          <p className="text-slate-200 font-medium mt-1 print:text-black">{apt.operating_hours || '-'}</p>
                         </div>
-                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                          <p className="text-slate-500 text-[10px] uppercase font-bold">Kategori Keamanan / PKP-PK</p>
-                          <p className="text-slate-200 font-medium mt-1">Kat {apt.security_category || '-'} / PKP-PK {apt.pkp_pk_category || '-'}</p>
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 print:bg-slate-100 print:border-black">
+                          <p className="text-slate-500 text-[10px] uppercase font-bold print:text-slate-700">Kategori Keamanan / PKP-PK</p>
+                          <p className="text-slate-200 font-medium mt-1 print:text-black">Kat {apt.security_category || '-'} / PKP-PK {apt.pkp_pk_category || '-'}</p>
                         </div>
-                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                          <p className="text-slate-500 text-[10px] uppercase font-bold">Koordinat ARP & Elevasi</p>
-                          <p className="text-slate-200 font-medium mt-1">{apt.arp_coordinate || '-'} ({apt.elevation || '-'})</p>
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 print:bg-slate-100 print:border-black">
+                          <p className="text-slate-500 text-[10px] uppercase font-bold print:text-slate-700">Koordinat ARP & Elevasi</p>
+                          <p className="text-slate-200 font-medium mt-1 print:text-black">{apt.arp_coordinate || '-'} ({apt.elevation || '-'})</p>
                         </div>
-                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                          <p className="text-slate-500 text-[10px] uppercase font-bold">Pesawat Terbesar</p>
-                          <p className="text-slate-200 font-medium mt-1">{apt.largest_aircraft || '-'}</p>
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 print:bg-slate-100 print:border-black">
+                          <p className="text-slate-500 text-[10px] uppercase font-bold print:text-slate-700">Pesawat Terbesar</p>
+                          <p className="text-slate-200 font-medium mt-1 print:text-black">{apt.largest_aircraft || '-'}</p>
                         </div>
-                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                          <p className="text-slate-500 text-[10px] uppercase font-bold">Dimensi Runway</p>
-                          <p className="text-slate-200 font-medium mt-1">{apt.runway_dimension || '-'}</p>
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 print:bg-slate-100 print:border-black">
+                          <p className="text-slate-500 text-[10px] uppercase font-bold print:text-slate-700">Dimensi Runway</p>
+                          <p className="text-slate-200 font-medium mt-1 print:text-black">{apt.runway_dimension || '-'}</p>
                         </div>
-                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                          <p className="text-slate-500 text-[10px] uppercase font-bold">Kontak / Email</p>
-                          <p className="text-slate-200 font-medium mt-1">{apt.phone_fax || '-'} | {apt.email || '-'}</p>
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 print:bg-slate-100 print:border-black">
+                          <p className="text-slate-500 text-[10px] uppercase font-bold print:text-slate-700">Kontak / Email</p>
+                          <p className="text-slate-200 font-medium mt-1 print:text-black">{apt.phone_fax || '-'} | {apt.email || '-'}</p>
                         </div>
                       </div>
                     </div>
@@ -975,7 +1080,7 @@ export default function App() {
       </main>
 
       {/* FLOATING AI CHATBOT BUTTON & WINDOW (FEATURE 5.0) */}
-      <div className="fixed bottom-6 right-6 z-40">
+      <div className="fixed bottom-6 right-6 z-40 print:hidden">
         {!showAiChat ? (
           <button 
             onClick={() => setShowAiChat(true)}
@@ -1033,7 +1138,7 @@ export default function App() {
 
       {/* MODAL DETAIL PREDICTIVE MAINTENANCE (FEATURE 5.0) */}
       {selectedPredictiveItem && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 print:hidden">
           <div className="relative w-full max-w-lg bg-slate-900 border border-slate-700 p-6 rounded-2xl text-slate-100 shadow-2xl">
             <button onClick={() => setSelectedPredictiveItem(null)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
               <X className="w-5 h-5" />
@@ -1097,7 +1202,7 @@ export default function App() {
 
       {/* MODAL INPUT / EDIT DATA */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto print:hidden">
           <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 p-6 rounded-2xl text-slate-100 shadow-2xl my-8 max-h-[90vh] overflow-y-auto">
             <button onClick={resetForm} className="absolute top-4 right-4 text-slate-400 hover:text-white">
               <X className="w-5 h-5" />
