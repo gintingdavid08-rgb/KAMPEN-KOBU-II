@@ -1,1 +1,25 @@
 @import "tailwindcss";
+@media print {
+  /* Sembunyikan elemen navigasi, sidebar, dan tombol yang tidak perlu */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Tampilkan hanya area printable */
+  #printable-area, #printable-area * {
+    visibility: visible;
+  }
+
+  #printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  /* Pengaturan margin kertas cetak */
+  @page {
+    size: A4 portrait;
+    margin: 1.5cm;
+  }
+}
