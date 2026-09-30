@@ -568,8 +568,8 @@ export default function App() {
           <div>
             <h1 className="text-base font-bold tracking-wide text-yellow-400 flex items-center gap-2">
               SISTEM MONITORING PERSONEL & FASILITAS KEAMANAN PENERBANGAN
-              <span className="px-2 py-0.5 bg-blue-900/80 text-cyan-300 border border-cyan-500/40 rounded text-[10px] font-extrabold flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-cyan-400 animate-pulse" /> 5.0 AI-Ready
+              <span className="px-1 py-0.3 bg-blue-900/80 text-cyan-300 border border-cyan-500/40 rounded text-[10px] font-extrabold flex items-center gap-1">
+                <Sparkles className="w-2 h-2 text-cyan-400 animate-pulse" /> 5.0 AI-Ready
               </span>
             </h1>
             <p className="text-xs text-blue-400">OTORITAS BANDAR UDARA WILAYAH II - Live Operational Intelligence</p>
