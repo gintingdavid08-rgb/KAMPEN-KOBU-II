@@ -23,3 +23,26 @@
     margin: 1.5cm;
   }
 }
+/* Aturan khusus saat mencetak */
+@media print {
+  /* 1. Paksa halaman utama dan elemen pembungkus agar terlihat */
+  html, body, #root, main, .app-container {
+    display: block !important;
+    visibility: visible !important;
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* 2. Sembunyikan hanya elemen navigasi/tombol yang tidak perlu dicetak */
+  nav, sidebar, header, footer, button, .no-print {
+    display: none !important;
+  }
+
+  /* 3. Paksa kontainer tabel/data agar tampil penuh */
+  .container, .content, table, div {
+    visibility: visible !important;
+  }
+}
