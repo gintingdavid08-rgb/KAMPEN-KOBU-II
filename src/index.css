@@ -143,3 +143,114 @@
     display: none !important;
   }
 }
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm 20mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-family: 'Times New Roman', Times, serif; /* Font klasik formal */
+    font-size: 11pt;
+  }
+
+  /* Sembunyikan semua elemen UI web biasa */
+  nav, sidebar, header, footer, button, .no-print {
+    display: none !important;
+  }
+
+  .print-container {
+    width: 100% !important;
+    margin: 0 auto;
+  }
+
+  /* KOP SURAT */
+  .report-header {
+    text-align: center;
+    margin-bottom: 15px;
+  }
+
+  .header-title h2 {
+    font-size: 14pt;
+    font-weight: bold;
+    margin: 0 0 5px 0;
+    text-transform: uppercase;
+  }
+
+  .header-title p {
+    font-size: 11pt;
+    margin: 0;
+    font-weight: bold;
+  }
+
+  .header-line {
+    border-bottom: 2px solid #000;
+    border-top: 1px solid #000;
+    height: 2px;
+    margin-top: 8px;
+    margin-bottom: 15px;
+  }
+
+  /* METADATA LAPORAN */
+  .report-meta table {
+    width: 100%;
+    margin-bottom: 15px;
+    border: none !important;
+  }
+
+  .report-meta td {
+    border: none !important;
+    padding: 2px 0 !important;
+    font-size: 10pt;
+  }
+
+  /* TABEL LAPORAN FORMAL */
+  .report-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-bottom: 20px;
+  }
+
+  .report-table th, 
+  .report-table td {
+    border: 1px solid #000000 !important;
+    padding: 6px 8px !important;
+    font-size: 10pt;
+    text-align: left;
+  }
+
+  .report-table th {
+    background-color: #e6e6e6 !important;
+    font-weight: bold;
+    text-align: center;
+    text-transform: uppercase;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .report-table td a {
+    text-decoration: none !important;
+    color: #000000 !important;
+  }
+
+  /* BLOK TANDA TANGAN */
+  .report-footer {
+    width: 100%;
+    margin-top: 30px;
+    display: flex;
+    justify-content: flex-end;
+    page-break-inside: avoid;
+  }
+
+  .signature-box {
+    width: 250px;
+    text-align: center;
+    float: right; /* Fallback untuk print engine lama */
+  }
+
+  .signature-space {
+    height: 60px;
+  }
+}
