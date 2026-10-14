@@ -504,8 +504,8 @@ export default function App() {
 
     message += `Mohon segera ditindaklanjuti pada platform:\nhttps://kampen-kobuii.vercel.app`;
 
-    const encodedUrl = `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`;
-    window.open(encodedUrl, '_blank');
+    const encodedUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+window.open(encodedUrl, '_blank');
   };
 
   // --- FITUR EXPORT CSV ---
