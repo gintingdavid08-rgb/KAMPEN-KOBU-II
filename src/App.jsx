@@ -172,6 +172,7 @@ export default function App() {
   const [userProfile, setUserProfile] = useState(null);
   
   const [facilities, setFacilities] = useState([]);
+  const [personnelFaskampen, setpersonnelFaskampen] = useState([]);
   const [personnel, setPersonnel] = useState([]);
   const [airports, setAirports] = useState([]);
   
