@@ -172,7 +172,6 @@ export default function App() {
   const [userProfile, setUserProfile] = useState(null);
   
   const [facilities, setFacilities] = useState([]);
-  const [personnelFaskampen, setpersonnelFaskampen] = useState([]);
   const [personnel, setPersonnel] = useState([]);
   const [airports, setAirports] = useState([]);
   
@@ -221,17 +220,9 @@ export default function App() {
     birth_place_date: '',
     license_level: 'BASIC AVSEC',
     license_number: '',
-    expiry_date: ''
+    expiry_date: '',
+    personnel_type: 'AVSEC' // default AVSEC, akan berganti ke FASKAMPEN jika di tab Personil Faskampen
   };
-
-  const initialPersonnelFASKAMPEN = {
-    airport_name: LIST_BANDARA[0],
-    name: '',
-    nip: '',
-    birth_place_date: '',
-    Sertification_number: '',
-    license_number: '',
-    initial_date: ''
 
   const initialAirportData = {
     airport_name: LIST_BANDARA[0],
@@ -256,7 +247,6 @@ export default function App() {
 
   const [formFaskampen, setFormFaskampen] = useState(initialFaskampen);
   const [formPersonnel, setFormPersonnel] = useState(initialPersonnel);
-  const [formPersonnelFaskampen, setFormPersonnelFaskampen] = useState(initialPersonnelFaskampen);
   const [formAirport, setFormAirport] = useState(initialAirportData);
 
   // Helper Audit Data Incomplete
@@ -274,7 +264,7 @@ export default function App() {
     const missing = [];
     if (!item.nip) missing.push('NIP/NIK');
     if (!item.birth_place_date) missing.push('Tempat/Tgl Lahir');
-    if (!item.license_number) missing.push('No. Lisensi');
+    if (!item.license_number) missing.push('No. Lisensi/Sertifikasi');
     if (!item.expiry_date) missing.push('Masa Berlaku');
     return missing;
   };
@@ -438,8 +428,12 @@ export default function App() {
         const { error } = await supabase.from('facilities').insert([{ ...payload, user_id: currentUserId }]);
         if (error) alert("Gagal simpan fasilitas: " + error.message);
       }
-    } else if (activeTab === 'personel') {
-      const payloadPersonnel = cleanFormData(formPersonnel);
+    } else if (activeTab === 'personel' || activeTab === 'personil_faskampen') {
+      const targetType = activeTab === 'personil_faskampen' ? 'FASKAMPEN' : 'AVSEC';
+      const payloadPersonnel = cleanFormData({
+        ...formPersonnel,
+        personnel_type: formPersonnel.personnel_type || targetType
+      });
 
       if (editingId) {
         const { error } = await supabase.from('personnel').update(payloadPersonnel).eq('id', editingId);
@@ -469,7 +463,7 @@ export default function App() {
 
     if (activeTab === 'faskampen') {
       await supabase.from('facilities').delete().eq('id', id);
-    } else if (activeTab === 'personel') {
+    } else if (activeTab === 'personel' || activeTab === 'personil_faskampen') {
       await supabase.from('personnel').delete().eq('id', id);
     } else if (activeTab === 'bandara') {
       await supabase.from('airports_info').delete().eq('id', id);
@@ -489,8 +483,12 @@ export default function App() {
         ...item,
         facility_location: item.facility_location || item.location || ''
       });
-    } else if (targetTab === 'personel') {
-      setFormPersonnel({ ...initialPersonnel, ...item });
+    } else if (targetTab === 'personel' || targetTab === 'personil_faskampen') {
+      setFormPersonnel({ 
+        ...initialPersonnel, 
+        ...item,
+        personnel_type: item.personnel_type || (targetTab === 'personil_faskampen' ? 'FASKAMPEN' : 'AVSEC')
+      });
     } else if (targetTab === 'bandara') {
       setFormAirport({ ...initialAirportData, ...item });
     }
@@ -502,7 +500,11 @@ export default function App() {
     setShowModal(false);
     setEditingId(null);
     setFormFaskampen(initialFaskampen);
-    setFormPersonnel(initialPersonnel);
+    setFormPersonnel({
+      ...initialPersonnel,
+      personnel_type: activeTab === 'personil_faskampen' ? 'FASKAMPEN' : 'AVSEC',
+      license_level: activeTab === 'personil_faskampen' ? 'TEKNISI FASKAMPEN' : 'BASIC AVSEC'
+    });
     setFormAirport(initialAirportData);
   };
 
@@ -520,7 +522,7 @@ export default function App() {
       const q = userMsg.toLowerCase();
 
       if (q.includes('lisensi') || q.includes('skp') || q.includes('personel')) {
-        aiReply = `Berdasarkan data sistem, saat ini terdapat **${personnel.length} Personel Avsec** terdaftar. Pastikan lisensi diperpanjang sebelum masa berlaku habis (peringatan muncul H-14).`;
+        aiReply = `Berdasarkan data sistem, saat ini terdapat **${personnel.length} Personel** terdaftar. Pastikan lisensi/sertifikasi diperpanjang sebelum masa berlaku habis (peringatan muncul H-14).`;
       } else if (q.includes('faskampen') || q.includes('fasilitas') || q.includes('alat')) {
         aiReply = `Sistem mencatat **${facilities.length} item Faskampen**. Gunakan fitur **Predictive Maintenance (Tombol AI)** pada tabel untuk menganalisis risiko kerusakan alat.`;
       } else if (q.includes('kalibrasi') || q.includes('x-ray') || q.includes('wtmd')) {
@@ -571,13 +573,26 @@ export default function App() {
     return matchesSearch && matchesAirport;
   });
 
-  const filteredPersonnel = userPersonnel.filter(item => {
+  // Filter khusus Personel Avsec (personnel_type !== 'FASKAMPEN')
+  const filteredPersonnelAvsec = userPersonnel.filter(item => {
+    const isAvsec = !item.personnel_type || item.personnel_type === 'AVSEC';
     const matchesSearch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.nip || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.birth_place_date || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                           (item.airport_name || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesAirport = selectedAirport === 'ALL' || item.airport_name === selectedAirport;
-    return matchesSearch && matchesAirport;
+    return isAvsec && matchesSearch && matchesAirport;
+  });
+
+  // Filter khusus Personil Faskampen (personnel_type === 'FASKAMPEN')
+  const filteredPersonnelFaskampen = userPersonnel.filter(item => {
+    const isFaskampen = item.personnel_type === 'FASKAMPEN';
+    const matchesSearch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (item.nip || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (item.birth_place_date || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (item.airport_name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesAirport = selectedAirport === 'ALL' || item.airport_name === selectedAirport;
+    return isFaskampen && matchesSearch && matchesAirport;
   });
 
   const filteredAirports = userAirports.filter(item => {
@@ -591,10 +606,15 @@ export default function App() {
   const laikCount = filteredFacilities.filter(i => i.status === 'LAIK').length;
   const tidakLaikCount = filteredFacilities.filter(i => i.status === 'TIDAK LAIK').length;
 
-  const totalPersonel = filteredPersonnel.length;
-  const personelAktif = filteredPersonnel.filter(i => calculateLicenseStatus(i.expiry_date).text === 'AKTIF').length;
-  const personelPerluPerpanjang = filteredPersonnel.filter(i => calculateLicenseStatus(i.expiry_date).text === 'Diharapkan Segera Memperpanjang License').length;
-  const personelMati = filteredPersonnel.filter(i => calculateLicenseStatus(i.expiry_date).text === 'MATI').length;
+  const totalPersonel = filteredPersonnelAvsec.length;
+  const personelAktif = filteredPersonnelAvsec.filter(i => calculateLicenseStatus(i.expiry_date).text === 'AKTIF').length;
+  const personelPerluPerpanjang = filteredPersonnelAvsec.filter(i => calculateLicenseStatus(i.expiry_date).text === 'Diharapkan Segera Memperpanjang License').length;
+  const personelMati = filteredPersonnelAvsec.filter(i => calculateLicenseStatus(i.expiry_date).text === 'MATI').length;
+
+  const totalPersonilFaskampen = filteredPersonnelFaskampen.length;
+  const faskampenAktif = filteredPersonnelFaskampen.filter(i => calculateLicenseStatus(i.expiry_date).text === 'AKTIF').length;
+  const faskampenPerluPerpanjang = filteredPersonnelFaskampen.filter(i => calculateLicenseStatus(i.expiry_date).text === 'Diharapkan Segera Memperpanjang License').length;
+  const faskampenMati = filteredPersonnelFaskampen.filter(i => calculateLicenseStatus(i.expiry_date).text === 'MATI').length;
 
   // --- FITUR NO. 3: REAL-TIME NOTIFICATION & WHATSAPP GATEWAY ---
   const handleSendWhatsAppAlert = () => {
@@ -625,16 +645,17 @@ export default function App() {
     }
 
     if (expiringPersonnel.length > 0) {
-      message += `📄 *PERINGATAN LISENSI AVSEC (${expiringPersonnel.length} Personel):*\n`;
+      message += `📄 *PERINGATAN LISENSI / SERTIFIKASI (${expiringPersonnel.length} Personel):*\n`;
       expiringPersonnel.forEach((p, i) => {
         const st = calculateLicenseStatus(p.expiry_date).text;
-        message += `${i + 1}. *${p.name}* (${p.airport_name})\n`;
-        message += `   - Level: ${p.license_level || '-'}\n`;
+        const typeLabel = p.personnel_type === 'FASKAMPEN' ? 'Teknisi Faskampen' : 'Avsec';
+        message += `${i + 1}. *${p.name}* (${typeLabel} - ${p.airport_name})\n`;
+        message += `   - Tingkat: ${p.license_level || '-'}\n`;
         message += `   - Masa Berlaku: ${p.expiry_date || '-'} (${st})\n`;
       });
       message += `\n`;
     } else {
-      message += `✅ *LISENSI:* Seluruh lisensi personel Avsec dalam status AKTIF.\n\n`;
+      message += `✅ *LISENSI & SERTIFIKASI:* Seluruh lisensi/sertifikasi personel dalam status AKTIF.\n\n`;
     }
 
     message += `Mohon segera ditindaklanjuti pada platform:\nhttps://kampen-kobuii.vercel.app`;
@@ -665,7 +686,19 @@ export default function App() {
       ]);
     } else if (activeTab === 'personel') {
       headers = ['Bandara', 'Nama Lengkap', 'NIP/NIK', 'Tempat/Tgl Lahir', 'Tingkat Lisensi', 'No. Lisensi (SKP)', 'Masa Berlaku', 'Status Lisensi'];
-      rows = filteredPersonnel.map(item => [
+      rows = filteredPersonnelAvsec.map(item => [
+        `"${item.airport_name || ''}"`,
+        `"${item.name || ''}"`,
+        `"${item.nip || ''}"`,
+        `"${item.birth_place_date || ''}"`,
+        `"${item.license_level || ''}"`,
+        `"${item.license_number || ''}"`,
+        `"${item.expiry_date || ''}"`,
+        `"${calculateLicenseStatus(item.expiry_date).text}"`
+      ]);
+    } else if (activeTab === 'personil_faskampen') {
+      headers = ['Bandara', 'Nama Lengkap', 'NIP/NIK', 'Tempat/Tgl Lahir', 'Tingkat Sertifikasi', 'No. Sertifikasi Kompetensi', 'Masa Berlaku', 'Status Sertifikasi'];
+      rows = filteredPersonnelFaskampen.map(item => [
         `"${item.airport_name || ''}"`,
         `"${item.name || ''}"`,
         `"${item.nip || ''}"`,
@@ -764,7 +797,7 @@ export default function App() {
 
       {/* HEADER TAMPILAN PRINT / PDF LAPORAN */}
       <div className="hidden print:block p-4 mb-4 border-b-2 border-black">
-        <h1 className="text-xl font-bold uppercase text-center">LAPORAN MONITORING {activeTab.toUpperCase()}</h1>
+        <h1 className="text-xl font-bold uppercase text-center">LAPORAN MONITORING {activeTab.replace('_', ' ').toUpperCase()}</h1>
         <h2 className="text-md font-semibold text-center">KANTOR OTORITAS BANDAR UDARA WILAYAH II MEDAN</h2>
         <p className="text-xs text-center mt-1">Filter Bandara: {selectedAirport} | Tanggal Cetak: {new Date().toLocaleDateString('id-ID')}</p>
       </div>
@@ -868,7 +901,9 @@ export default function App() {
                         {incompletePersonnel.map(item => (
                           <div key={`per-alert-${item.id}`} className="bg-slate-950 p-3 rounded-xl border border-amber-900/50 hover:border-amber-700 transition space-y-1.5">
                             <div className="flex justify-between items-start">
-                              <span className="px-2 py-0.5 bg-cyan-950 text-cyan-400 rounded text-[9px] font-bold">PERSONEL</span>
+                              <span className="px-2 py-0.5 bg-cyan-950 text-cyan-400 rounded text-[9px] font-bold">
+                                {item.personnel_type === 'FASKAMPEN' ? 'PERSONIL FASKAMPEN' : 'PERSONEL AVSEC'}
+                              </span>
                               <span className="text-[10px] text-slate-400">{item.airport_name}</span>
                             </div>
                             <p className="font-bold text-slate-200">{item.name || 'Tanpa Nama'}</p>
@@ -877,7 +912,7 @@ export default function App() {
                               {item.missing.join(', ')}
                             </div>
                             <button 
-                              onClick={() => handleEdit(item, 'personel')}
+                              onClick={() => handleEdit(item, item.personnel_type === 'FASKAMPEN' ? 'personil_faskampen' : 'personel')}
                               className="w-full mt-1 py-1 bg-slate-800 hover:bg-slate-700 text-blue-400 font-semibold rounded text-[11px] text-center block"
                             >
                               Lengkapi Data Sekarang
@@ -915,7 +950,7 @@ export default function App() {
             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg font-medium text-sm transition shadow-md"
           >
             <PlusCircle className="w-4 h-4" />
-            Input Data {activeTab === 'faskampen' ? 'Fasilitas' : activeTab === 'personel' ? 'Personel' : 'Bandara'}
+            Input Data {activeTab === 'faskampen' ? 'Fasilitas' : activeTab === 'personel' ? 'Personel Avsec' : activeTab === 'personil_faskampen' ? 'Personil Faskampen' : 'Bandara'}
           </button>
           
           <button onClick={handleLogout} className="p-2 bg-slate-800 hover:bg-rose-900/50 text-slate-300 hover:text-rose-400 rounded-lg transition border border-slate-700" title="Keluar">
@@ -924,10 +959,11 @@ export default function App() {
         </div>
       </header>
 
-      <div className="bg-slate-900/80 border-b border-slate-800 px-6 pt-3 flex gap-2 print:hidden">
+      {/* TAB NAVIGATION BAR */}
+      <div className="bg-slate-900/80 border-b border-slate-800 px-6 pt-3 flex gap-2 print:hidden overflow-x-auto">
         <button
           onClick={() => setActiveTab('faskampen')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-lg font-semibold text-sm transition border-b-2 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-lg font-semibold text-sm transition border-b-2 whitespace-nowrap ${
             activeTab === 'faskampen' ? 'bg-slate-950 text-blue-400 border-blue-500' : 'text-slate-400 hover:text-slate-200 border-transparent'
           }`}
         >
@@ -936,16 +972,26 @@ export default function App() {
 
         <button
           onClick={() => setActiveTab('personel')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-lg font-semibold text-sm transition border-b-2 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-lg font-semibold text-sm transition border-b-2 whitespace-nowrap ${
             activeTab === 'personel' ? 'bg-slate-950 text-blue-400 border-blue-500' : 'text-slate-400 hover:text-slate-200 border-transparent'
           }`}
         >
           <Users className="w-4 h-4" /> Personel Avsec
         </button>
 
+        {/* TAB BARU: PERSONIL FASKAMPEN */}
+        <button
+          onClick={() => setActiveTab('personil_faskampen')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-lg font-semibold text-sm transition border-b-2 whitespace-nowrap ${
+            activeTab === 'personil_faskampen' ? 'bg-slate-950 text-blue-400 border-blue-500' : 'text-slate-400 hover:text-slate-200 border-transparent'
+          }`}
+        >
+          <Wrench className="w-4 h-4" /> Personil Faskampen
+        </button>
+
         <button
           onClick={() => setActiveTab('bandara')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-lg font-semibold text-sm transition border-b-2 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-t-lg font-semibold text-sm transition border-b-2 whitespace-nowrap ${
             activeTab === 'bandara' ? 'bg-slate-950 text-blue-400 border-blue-500' : 'text-slate-400 hover:text-slate-200 border-transparent'
           }`}
         >
@@ -1004,6 +1050,34 @@ export default function App() {
               <div>
                 <p className="text-xs text-slate-400 font-medium">Perlu Perpanjang / Mati</p>
                 <p className="text-2xl font-bold text-amber-400">{personelPerluPerpanjang + personelMati} <span className="text-xs text-slate-500">Orang</span></p>
+              </div>
+              <div className="p-3 bg-amber-500/10 rounded-lg text-amber-400"><Clock className="w-5 h-5" /></div>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'personil_faskampen' && (
+          <>
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Total Personil Faskampen</p>
+                <p className="text-2xl font-bold text-cyan-400">{totalPersonilFaskampen} <span className="text-xs text-slate-500">Orang</span></p>
+              </div>
+              <div className="p-3 bg-cyan-500/10 rounded-lg text-cyan-400"><Wrench className="w-5 h-5" /></div>
+            </div>
+
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Sertifikasi Aktif</p>
+                <p className="text-2xl font-bold text-emerald-400">{faskampenAktif} <span className="text-xs text-slate-500">Orang</span></p>
+              </div>
+              <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-400"><CheckCircle2 className="w-5 h-5" /></div>
+            </div>
+
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-400 font-medium">Perlu Perpanjang / Habis</p>
+                <p className="text-2xl font-bold text-amber-400">{faskampenPerluPerpanjang + faskampenMati} <span className="text-xs text-slate-500">Orang</span></p>
               </div>
               <div className="p-3 bg-amber-500/10 rounded-lg text-amber-400"><Clock className="w-5 h-5" /></div>
             </div>
@@ -1116,14 +1190,14 @@ export default function App() {
             </button>
           </div>
 
-          {/* Kartu Peringatan Lisensi Avsec */}
+          {/* Kartu Peringatan Lisensi Avsec / Sertifikasi Faskampen */}
           <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between shadow-lg">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-lg">
                 <Clock className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Peringatan Lisensi</p>
+                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Peringatan Masa Berlaku</p>
                 <p className="text-sm font-bold text-white mt-0.5">
                   {userPersonnel.filter(p => calculateLicenseStatus(p.expiry_date).text !== 'AKTIF').length} Personel Masa Berlaku Habis / H-14
                 </p>
@@ -1222,6 +1296,7 @@ export default function App() {
               </div>
             )}
 
+            {/* TAB PERSONEL AVSEC */}
             {activeTab === 'personel' && (
               <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl print:bg-white print:border-none print:shadow-none">
                 <table className="w-full text-left text-xs">
@@ -1237,10 +1312,10 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50 text-slate-300 print:divide-slate-300 print:text-black">
-                    {filteredPersonnel.length === 0 ? (
-                      <tr><td colSpan="7" className="text-center py-8 text-slate-500">Tidak ada data personel ditemukan.</td></tr>
+                    {filteredPersonnelAvsec.length === 0 ? (
+                      <tr><td colSpan="7" className="text-center py-8 text-slate-500">Tidak ada data personel Avsec ditemukan.</td></tr>
                     ) : (
-                      filteredPersonnel.map((item) => {
+                      filteredPersonnelAvsec.map((item) => {
                         const statusObj = calculateLicenseStatus(item.expiry_date);
                         const missing = getPersonnelIncompleteFields(item);
                         return (
@@ -1261,7 +1336,7 @@ export default function App() {
                             </td>
                             <td className="px-4 py-3 print:text-black">
                               <span className="px-2 py-0.5 bg-blue-950 text-blue-400 border border-blue-800 rounded text-[10px] font-bold print:border-none print:p-0 print:text-black">
-                                {item.license_level}
+                                {item.license_level || 'BASIC AVSEC'}
                               </span>
                             </td>
                             <td className="px-4 py-3 font-mono print:text-black">{item.license_number || '-'}</td>
@@ -1272,7 +1347,70 @@ export default function App() {
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right space-x-1 print:hidden">
-                              <button onClick={() => handleEdit(item)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-blue-400"><Edit className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleEdit(item, 'personel')} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-blue-400"><Edit className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => handleDelete(item.id)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* TAB PERSONIL FASKAMPEN */}
+            {activeTab === 'personil_faskampen' && (
+              <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl print:bg-white print:border-none print:shadow-none">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-800/60 border-b border-slate-800 text-slate-400 uppercase tracking-wider print:bg-slate-200 print:text-black">
+                    <tr>
+                      <th className="px-4 py-3">Nama Lengkap / NIP</th>
+                      <th className="px-4 py-3">Tempat, Tgl Lahir</th>
+                      <th className="px-4 py-3">Tingkat Sertifikasi</th>
+                      <th className="px-4 py-3">No. Sertifikasi Kompetensi</th>
+                      <th className="px-4 py-3">Masa Berlaku</th>
+                      <th className="px-4 py-3">Status Sertifikasi</th>
+                      <th className="px-4 py-3 text-right print:hidden">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/50 text-slate-300 print:divide-slate-300 print:text-black">
+                    {filteredPersonnelFaskampen.length === 0 ? (
+                      <tr><td colSpan="7" className="text-center py-8 text-slate-500">Tidak ada data personil Faskampen ditemukan.</td></tr>
+                    ) : (
+                      filteredPersonnelFaskampen.map((item) => {
+                        const statusObj = calculateLicenseStatus(item.expiry_date);
+                        const missing = getPersonnelIncompleteFields(item);
+                        return (
+                          <tr key={item.id} className="hover:bg-slate-800/30 transition print:hover:bg-transparent">
+                            <td className="px-4 py-3 print:text-black">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-white print:text-black">{item.name}</span>
+                                {missing.length > 0 && (
+                                  <span className="px-1.5 py-0.5 bg-amber-950/80 text-amber-400 border border-amber-800 rounded text-[9px] font-semibold flex items-center gap-0.5 print:hidden" title={`Belum lengkap: ${missing.join(', ')}`}>
+                                    <AlertTriangle className="w-2.5 h-2.5" /> Incomplete
+                                  </span>
+                                )}
+                              </div>
+                              {item.nip && <div className="underline text-slate-400 font-mono text-[11px] mt-0.5 print:text-slate-700">{item.nip}</div>}
+                            </td>
+                            <td className="px-4 py-3 text-slate-300 font-medium print:text-black">
+                              {item.birth_place_date || '-'}
+                            </td>
+                            <td className="px-4 py-3 print:text-black">
+                              <span className="px-2 py-0.5 bg-blue-950 text-blue-400 border border-blue-800 rounded text-[10px] font-bold print:border-none print:p-0 print:text-black">
+                                {item.license_level || 'TEKNISI FASKAMPEN'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 font-mono print:text-black">{item.license_number || '-'}</td>
+                            <td className="px-4 py-3 text-slate-400 font-medium print:text-black">{item.expiry_date || '-'}</td>
+                            <td className="px-4 py-3 print:text-black">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border inline-block print:border-none print:p-0 ${statusObj.color} print:text-black`}>
+                                {statusObj.text}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right space-x-1 print:hidden">
+                              <button onClick={() => handleEdit(item, 'personil_faskampen')} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-blue-400"><Edit className="w-3.5 h-3.5" /></button>
                               <button onClick={() => handleDelete(item.id)} className="p-1.5 hover:bg-slate-800 rounded text-slate-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                             </td>
                           </tr>
@@ -1480,7 +1618,11 @@ export default function App() {
               <X className="w-5 h-5" />
             </button>
             <h2 className="text-lg font-bold mb-4 border-b border-slate-800 pb-2">
-              {editingId ? 'Edit Data' : 'Tambah Data'} {activeTab === 'faskampen' ? 'Fasilitas Keamanan' : activeTab === 'personel' ? 'Personel Avsec' : 'Lengkap Bandara'}
+              {editingId ? 'Edit Data' : 'Tambah Data'} {
+                activeTab === 'faskampen' ? 'Fasilitas Keamanan' :
+                activeTab === 'personel' ? 'Personel Avsec' :
+                activeTab === 'personil_faskampen' ? 'Personil Faskampen' : 'Lengkap Bandara'
+              }
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
@@ -1542,7 +1684,7 @@ export default function App() {
                 </>
               )}
 
-              {activeTab === 'personel' && (
+              {(activeTab === 'personel' || activeTab === 'personil_faskampen') && (
                 <>
                   <div>
                     <label className="block text-slate-400 mb-1">Nama Bandara</label>
@@ -1569,17 +1711,37 @@ export default function App() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-slate-400 mb-1">Tingkat Lisensi</label>
-                    <select value={formPersonnel.license_level} onChange={(e) => setFormPersonnel({...formPersonnel, license_level: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white">
-                      <option value="BASIC AVSEC">BASIC AVSEC</option>
-                      <option value="JUNIOR AVSEC">JUNIOR AVSEC</option>
-                      <option value="SENIOR AVSEC">SENIOR AVSEC</option>
-                    </select>
+                    <label className="block text-slate-400 mb-1">
+                      {activeTab === 'personil_faskampen' ? 'Tingkat Sertifikasi' : 'Tingkat Lisensi'}
+                    </label>
+                    {activeTab === 'personil_faskampen' ? (
+                      <input 
+                        type="text" 
+                        value={formPersonnel.license_level} 
+                        onChange={(e) => setFormPersonnel({...formPersonnel, license_level: e.target.value})} 
+                        className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" 
+                        placeholder="TEKNISI FASKAMPEN / LINGKUP I/II/III" 
+                      />
+                    ) : (
+                      <select value={formPersonnel.license_level} onChange={(e) => setFormPersonnel({...formPersonnel, license_level: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white">
+                        <option value="BASIC AVSEC">BASIC AVSEC</option>
+                        <option value="JUNIOR AVSEC">JUNIOR AVSEC</option>
+                        <option value="SENIOR AVSEC">SENIOR AVSEC</option>
+                      </select>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-slate-400 mb-1">No. Lisensi (SKP)</label>
-                      <input type="text" value={formPersonnel.license_number} onChange={(e) => setFormPersonnel({...formPersonnel, license_number: e.target.value})} className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" />
+                      <label className="block text-slate-400 mb-1">
+                        {activeTab === 'personil_faskampen' ? 'No. Sertifikasi Kompetensi' : 'No. Lisensi (SKP)'}
+                      </label>
+                      <input 
+                        type="text" 
+                        value={formPersonnel.license_number} 
+                        onChange={(e) => setFormPersonnel({...formPersonnel, license_number: e.target.value})} 
+                        className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-white" 
+                        placeholder={activeTab === 'personil_faskampen' ? 'No. SK/Sertifikat Faskampen' : 'No. SKP Avsec'}
+                      />
                     </div>
                     <div>
                       <label className="block text-slate-400 mb-1">Masa Berlaku (Expiry Date)</label>
