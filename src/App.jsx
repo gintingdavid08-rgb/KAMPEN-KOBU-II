@@ -223,6 +223,15 @@ export default function App() {
     expiry_date: ''
   };
 
+  const initialPersonnelFASKAMPEN = {
+    airport_name: LIST_BANDARA[0],
+    name: '',
+    nip: '',
+    birth_place_date: '',
+    Sertification_number: '',
+    license_number: '',
+    initial_date: ''
+
   const initialAirportData = {
     airport_name: LIST_BANDARA[0],
     organizer: 'Bandar Udara',
@@ -246,6 +255,7 @@ export default function App() {
 
   const [formFaskampen, setFormFaskampen] = useState(initialFaskampen);
   const [formPersonnel, setFormPersonnel] = useState(initialPersonnel);
+  const [formPersonnelFaskampen, setFormPersonnelFaskampen] = useState(initialPersonnelFaskampen);
   const [formAirport, setFormAirport] = useState(initialAirportData);
 
   // Helper Audit Data Incomplete
