@@ -461,6 +461,53 @@ export default function App() {
   const personelPerluPerpanjang = filteredPersonnel.filter(i => calculateLicenseStatus(i.expiry_date).text === 'Diharapkan Segera Memperpanjang License').length;
   const personelMati = filteredPersonnel.filter(i => calculateLicenseStatus(i.expiry_date).text === 'MATI').length;
 
+  // --- FITUR NO. 3: REAL-TIME NOTIFICATION & WHATSAPP GATEWAY ---
+  const handleSendWhatsAppAlert = (targetPhone = "6281234567890") => {
+    const criticalFacilities = userFacilities.filter(
+      (f) => f.status === 'TIDAK LAIK' || (f.condition_percent !== null && f.condition_percent < 50)
+    );
+
+    const expiringPersonnel = userPersonnel.filter((p) => {
+      const status = calculateLicenseStatus(p.expiry_date).text;
+      return status === 'MATI' || status === 'Diharapkan Segera Memperpanjang License';
+    });
+
+    let message = `*ALERT OPERASIONAL OTBAN WILAYAH II MEDAN*\n`;
+    message += `Tanggal: ${new Date().toLocaleDateString('id-ID')}\n`;
+    message += `Pengirim: ${session?.user?.email || 'System Admin'}\n`;
+    message += `-------------------------------------------\n\n`;
+
+    if (criticalFacilities.length > 0) {
+      message += `⚠️ *FASILITAS PERLU PERBAIKAN (${criticalFacilities.length} Unit):*\n`;
+      criticalFacilities.forEach((f, i) => {
+        message += `${i + 1}. *${f.equipment_name}* (${f.airport_name})\n`;
+        message += `   - Lokasi: ${f.facility_location || f.location || '-'}\n`;
+        message += `   - Kondisi: ${f.condition_percent ?? 0}% | Status: ${f.status}\n`;
+      });
+      message += `\n`;
+    } else {
+      message += `✅ *FASILITAS:* Semua peralatan utama dalam kondisi LAIK OPERASI.\n\n`;
+    }
+
+    if (expiringPersonnel.length > 0) {
+      message += `📄 *PERINGATAN LISENSI AVSEC (${expiringPersonnel.length} Personel):*\n`;
+      expiringPersonnel.forEach((p, i) => {
+        const st = calculateLicenseStatus(p.expiry_date).text;
+        message += `${i + 1}. *${p.name}* (${p.airport_name})\n`;
+        message += `   - Level: ${p.license_level || '-'}\n`;
+        message += `   - Masa Berlaku: ${p.expiry_date || '-'} (${st})\n`;
+      });
+      message += `\n`;
+    } else {
+      message += `✅ *LISENSI:* Seluruh lisensi personel Avsec dalam status AKTIF.\n\n`;
+    }
+
+    message += `Mohon segera ditindaklanjuti pada platform:\nhttps://kampen-kobuii.vercel.app`;
+
+    const encodedUrl = `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`;
+    window.open(encodedUrl, '_blank');
+  };
+
   // --- FITUR EXPORT CSV ---
   const exportToCSV = () => {
     let headers = [];
@@ -602,6 +649,19 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-3 relative">
+          {/* TOMBOL WHATSAPP GATEWAY (FITUR NO. 3) */}
+          <button
+            onClick={() => handleSendWhatsAppAlert()}
+            className="flex items-center gap-1.5 bg-emerald-950/80 hover:bg-emerald-900/80 text-emerald-400 border border-emerald-800/80 px-2.5 py-1.5 rounded-lg text-xs font-bold transition shadow-sm whitespace-nowrap"
+            title="Kirim Laporan Peringatan via WhatsApp"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            WA Gateway
+          </button>
+
           {/* TOMBOL ALERT NOTIFIKASI KHUSUS ADMIN */}
           {isAdmin && (
             <div className="relative">
@@ -891,6 +951,51 @@ export default function App() {
       </div>
 
       <main className="p-6 flex-1">
+        {/* BANNER REAL-TIME NOTIFICATION GATEWAY (FITUR NO. 3) */}
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 print:hidden">
+          {/* Kartu Peringatan Fasilitas */}
+          <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-rose-500/10 text-rose-400 rounded-lg">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Perhatian Fasilitas</p>
+                <p className="text-sm font-bold text-white mt-0.5">
+                  {userFacilities.filter(f => f.status === 'TIDAK LAIK' || (f.condition_percent !== null && f.condition_percent < 50)).length} Unit Peralatan Tidak Laik
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => handleSendWhatsAppAlert()}
+              className="px-3 py-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/80 rounded-lg text-xs font-semibold transition"
+            >
+              Alert WA
+            </button>
+          </div>
+
+          {/* Kartu Peringatan Lisensi Avsec */}
+          <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-lg">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Peringatan Lisensi</p>
+                <p className="text-sm font-bold text-white mt-0.5">
+                  {userPersonnel.filter(p => calculateLicenseStatus(p.expiry_date).text !== 'AKTIF').length} Personel Masa Berlaku Habis / H-14
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => handleSendWhatsAppAlert()}
+              className="px-3 py-1.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-800/80 rounded-lg text-xs font-semibold transition"
+            >
+              Send Warning
+            </button>
+          </div>
+        </div>
+
         {loading ? (
           <div className="text-center py-20 text-slate-500 text-sm">Memuat data dari database...</div>
         ) : (
