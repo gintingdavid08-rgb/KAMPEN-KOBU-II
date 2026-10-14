@@ -43,19 +43,45 @@ const LIST_BANDARA = [
   'Bandar Udara Matak – Kep. Anambas',
 ];
 
-// KOORDINAT GEOSPASIAL BANDARA WILAYAH II (FITUR NO. 4)
+// DATA KOORDINAT GEOSPASIAL SELURUH BANDARA WILAYAH II
 const AIRPORT_COORDINATES = {
+  // --- BANDARA UTAMA & INTERNASIONAL ---
   'Bandar Udara Internasional Kualanamu': { lat: 3.6422, lng: 98.8853 },
   'Bandara Internasional Batam': { lat: 1.1211, lng: 104.1187 },
   'Bandar Udara Sultan Iskandar Muda': { lat: 5.5236, lng: 95.4203 },
   'Bandar Udara Raja Sisimangaraja XII': { lat: 2.2597, lng: 98.9862 },
   'Bandar Udara Sultan Syarif Kasim II': { lat: 0.4608, lng: 101.4447 },
   'Bandar Udara Raja Haji Fisabilillah': { lat: 0.9228, lng: 104.5319 },
+
+  // --- UPBU (SUMUT, ACEH, RIAU, KEPRI) ---
+  'UPBU Cut Nyak Dhien – Nagan Raya': { lat: 4.1758, lng: 96.2622 },
+  'UPBU Aek Godang – Padang Lawas Utara': { lat: 1.3992, lng: 99.4281 },
   'UPBU UPBU Dr. Ferdinand Lumban Tobing – Sibolga': { lat: 1.5558, lng: 98.8928 },
   'UPBU UPBU Ranai – Natuna': { lat: 3.9453, lng: 108.3881 },
+  'UPBU UPBU Raja Haji Abdullah – Tj. Balai Karimun': { lat: 1.0547, lng: 103.3883 },
+  'UPBU UPBU Tuanku Tambusai – Pasir Pangaraian': { lat: 0.8872, lng: 100.3125 },
+  'UPBU Maimun Saleh – Sabang': { lat: 5.8753, lng: 95.3408 },
+  'UPBU Teuku Cut Ali – Tapak Tuan': { lat: 3.2383, lng: 97.2386 },
+  'UPBU Dabo – Singkep': { lat: -0.4792, lng: 104.5781 },
+  'UPBU Japura – Rengat': { lat: -0.3522, lng: 102.3353 },
   'UPBU Lasikin – Sinabang': { lat: 2.4042, lng: 96.3283 },
   'UPBU Rembele – Takengon': { lat: 4.7239, lng: 96.8483 },
+  'UPBU Lasondre – Pulau Batu': { lat: -0.0125, lng: 98.2831 },
   'UPBU Binaka – Gunung Sitoli': { lat: 1.1672, lng: 97.7042 },
+  'UPBU Letung – Kep. Anambas': { lat: 2.9753, lng: 105.7831 },
+  'UPBU Malikussaleh – Lhokseumawe': { lat: 5.2269, lng: 96.9472 },
+  'Bandar Udara Point A – Lhoksukon': { lat: 5.0522, lng: 97.2917 },
+
+  // --- SATPEL (SATUAN PELAYANAN) & UPTD ---
+  'Satpel Bandar Udara Alas Leuser – Kutacane': { lat: 3.4211, lng: 97.8731 },
+  'Satpel Bandar Udara Sibisa – Parapat': { lat: 2.5836, lng: 99.0069 },
+  'Satpel Bandar Udara Blangkejeren – Gayo Lues': { lat: 3.9781, lng: 97.3522 },
+  'Satpel Bandar Udara Syekh Hamzah Fansyuri -Singkil': { lat: 2.2903, lng: 97.8389 },
+  'Satpel Bandar Udara Bukit Malintang – Mandailing Natal': { lat: 0.8833, lng: 99.5500 },
+  'Satpel Bandar Udara Tambelan – Bintan': { lat: 1.0128, lng: 107.5614 },
+  'UPTD Bandar Udara Pinang Kampai – Dumai': { lat: 1.6158, lng: 101.4339 },
+  'Bandar Udara Sultan Syarif Haroen Setia Negara – Pelalawan': { lat: 0.3800, lng: 101.8800 },
+  'Bandar Udara Matak – Kep. Anambas': { lat: 3.3517, lng: 106.2625 }
 };
 
 // KOMPONEN PETA GIS INTERAKTIF (FITUR NO. 4)
