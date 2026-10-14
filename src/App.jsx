@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import LandingPage from './LandingPage';
 import { supabase } from './supabaseClient';
 import { 
@@ -42,6 +42,104 @@ const LIST_BANDARA = [
   'Bandar Udara Sultan Syarif Haroen Setia Negara – Pelalawan',
   'Bandar Udara Matak – Kep. Anambas',
 ];
+
+// KOORDINAT GEOSPASIAL BANDARA WILAYAH II (FITUR NO. 4)
+const AIRPORT_COORDINATES = {
+  'Bandar Udara Internasional Kualanamu': { lat: 3.6422, lng: 98.8853 },
+  'Bandara Internasional Batam': { lat: 1.1211, lng: 104.1187 },
+  'Bandar Udara Sultan Iskandar Muda': { lat: 5.5236, lng: 95.4203 },
+  'Bandar Udara Raja Sisimangaraja XII': { lat: 2.2597, lng: 98.9862 },
+  'Bandar Udara Sultan Syarif Kasim II': { lat: 0.4608, lng: 101.4447 },
+  'Bandar Udara Raja Haji Fisabilillah': { lat: 0.9228, lng: 104.5319 },
+  'UPBU UPBU Dr. Ferdinand Lumban Tobing – Sibolga': { lat: 1.5558, lng: 98.8928 },
+  'UPBU UPBU Ranai – Natuna': { lat: 3.9453, lng: 108.3881 },
+  'UPBU Lasikin – Sinabang': { lat: 2.4042, lng: 96.3283 },
+  'UPBU Rembele – Takengon': { lat: 4.7239, lng: 96.8483 },
+  'UPBU Binaka – Gunung Sitoli': { lat: 1.1672, lng: 97.7042 },
+};
+
+// KOMPONEN PETA GIS INTERAKTIF (FITUR NO. 4)
+function GISMapDashboard({ facilities, personnel, onSelectAirport }) {
+  const mapRef = useRef(null);
+  const leafletMap = useRef(null);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Load Leaflet Script & CSS Dinamis jika belum terpasang
+    if (!window.L) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.onload = () => initMap();
+      document.head.appendChild(script);
+    } else {
+      initMap();
+    }
+
+    function initMap() {
+      if (!leafletMap.current && window.L) {
+        leafletMap.current = window.L.map(mapRef.current).setView([2.5, 99.5], 6);
+        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap'
+        }).addTo(leafletMap.current);
+      }
+
+      if (leafletMap.current && window.L) {
+        leafletMap.current.eachLayer((layer) => {
+          if (layer instanceof window.L.Marker) {
+            leafletMap.current.removeLayer(layer);
+          }
+        });
+
+        Object.entries(AIRPORT_COORDINATES).forEach(([airportName, coord]) => {
+          const aptFacs = facilities.filter(f => f.airport_name === airportName);
+          const hasCritical = aptFacs.some(f => f.status === 'TIDAK LAIK' || f.condition_percent < 50);
+          const markerColor = hasCritical ? '#f43f5e' : '#10b981';
+
+          const customIcon = window.L.divIcon({
+            className: 'custom-map-pin',
+            html: `<div style="background-color: ${markerColor}; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 8px ${markerColor}; cursor: pointer;"></div>`,
+            iconSize: [14, 14]
+          });
+
+          const marker = window.L.marker([coord.lat, coord.lng], { icon: customIcon })
+            .addTo(leafletMap.current);
+
+          marker.bindPopup(`
+            <div style="font-family: sans-serif; font-size: 11px; color: #0f172a; padding: 2px;">
+              <strong style="font-size: 12px; display: block; margin-bottom: 4px;">${airportName}</strong>
+              <span>Total Peralatan: <b>${aptFacs.length} Unit</b></span><br/>
+              <span style="color: ${hasCritical ? '#e11d48' : '#059669'}; font-weight: bold; display: block; margin-top: 4px;">
+                Status: ${hasCritical ? '⚠️ Perlu Perbaikan' : '✅ Operational Normal'}
+              </span>
+            </div>
+          `);
+        });
+      }
+    }
+  }, [facilities, personnel]);
+
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl mb-6 print:hidden">
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center gap-2">
+          <MapPin className="w-5 h-5 text-cyan-400" />
+          <h3 className="font-bold text-white text-sm">Peta Geospasial Sebaran Bandara Wilayah II</h3>
+        </div>
+        <div className="flex gap-4 text-xs font-semibold">
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Laik Operasi</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Perlu Perbaikan</span>
+        </div>
+      </div>
+      <div ref={mapRef} className="w-full h-72 rounded-lg z-10 bg-slate-950"></div>
+    </div>
+  );
+}
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -462,7 +560,7 @@ export default function App() {
   const personelMati = filteredPersonnel.filter(i => calculateLicenseStatus(i.expiry_date).text === 'MATI').length;
 
   // --- FITUR NO. 3: REAL-TIME NOTIFICATION & WHATSAPP GATEWAY ---
-  const handleSendWhatsAppAlert = (targetPhone = "6282277218167") => {
+  const handleSendWhatsAppAlert = () => {
     const criticalFacilities = userFacilities.filter(
       (f) => f.status === 'TIDAK LAIK' || (f.condition_percent !== null && f.condition_percent < 50)
     );
@@ -505,7 +603,7 @@ export default function App() {
     message += `Mohon segera ditindaklanjuti pada platform:\nhttps://kampen-kobuii.vercel.app`;
 
     const encodedUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-window.open(encodedUrl, '_blank');
+    window.open(encodedUrl, '_blank');
   };
 
   // --- FITUR EXPORT CSV ---
@@ -777,9 +875,9 @@ window.open(encodedUrl, '_blank');
 
           <button 
             onClick={() => { resetForm(); setShowModal(true); }}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-2.0 py-1.0 rounded-lg font-medium text-sm transition shadow-md"
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg font-medium text-sm transition shadow-md"
           >
-            <PlusCircle className="w-3 h-3" />
+            <PlusCircle className="w-4 h-4" />
             Input Data {activeTab === 'faskampen' ? 'Fasilitas' : activeTab === 'personel' ? 'Personel' : 'Bandara'}
           </button>
           
@@ -951,6 +1049,13 @@ window.open(encodedUrl, '_blank');
       </div>
 
       <main className="p-6 flex-1">
+        {/* FITUR NO. 4: PETA GIS INTERAKTIF */}
+        <GISMapDashboard 
+          facilities={userFacilities} 
+          personnel={userPersonnel} 
+          onSelectAirport={(apt) => setSelectedAirport(apt)} 
+        />
+
         {/* BANNER REAL-TIME NOTIFICATION GATEWAY (FITUR NO. 3) */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 print:hidden">
           {/* Kartu Peringatan Fasilitas */}
