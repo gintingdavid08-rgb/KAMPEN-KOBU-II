@@ -777,9 +777,9 @@ window.open(encodedUrl, '_blank');
 
           <button 
             onClick={() => { resetForm(); setShowModal(true); }}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg font-medium text-sm transition shadow-md"
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-2.0 py-1.0 rounded-lg font-medium text-sm transition shadow-md"
           >
-            <PlusCircle className="w-4 h-4" />
+            <PlusCircle className="w-3 h-3" />
             Input Data {activeTab === 'faskampen' ? 'Fasilitas' : activeTab === 'personel' ? 'Personel' : 'Bandara'}
           </button>
           
