@@ -462,7 +462,7 @@ export default function App() {
   const personelMati = filteredPersonnel.filter(i => calculateLicenseStatus(i.expiry_date).text === 'MATI').length;
 
   // --- FITUR NO. 3: REAL-TIME NOTIFICATION & WHATSAPP GATEWAY ---
-  const handleSendWhatsAppAlert = (targetPhone = "6281234567890") => {
+  const handleSendWhatsAppAlert = (targetPhone = "6282277218167") => {
     const criticalFacilities = userFacilities.filter(
       (f) => f.status === 'TIDAK LAIK' || (f.condition_percent !== null && f.condition_percent < 50)
     );
